@@ -23,6 +23,10 @@ private:
 
     template <typename... T>
     friend class EntityManager;
+
+    // The storage frees a slot by assigning T{}, so it needs the private default constructor.
+    template <typename T>
+    friend class ComponentStorage;
 };
 
 }  // namespace ECSEngine

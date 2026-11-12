@@ -26,6 +26,7 @@ set(ECS_ENGINE_FILES
     Entity.h
     MathUtil.h
     Keyboard.h
+    CollisionUtil.h
 )
 
 set(ECS_COMPONENT_FILES
