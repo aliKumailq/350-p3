@@ -4,9 +4,11 @@
 
 #include "MathUtil.h"
 #include <SFML/Graphics.hpp>
+#include <SFML/Graphics/RenderWindow.hpp>
 #include <SFML/Window.hpp>
 
 namespace ECSEngine {
+    using Vector2D = Point2D;
 
 class WindowManager {
 public:
@@ -34,6 +36,9 @@ public:
 
 private:
     std::shared_ptr<sf::RenderWindow> mWindow;
+    Vector2D windowSize() const;       // size of the window in screen pixels (i.e. window coords)
+    Vector2D mViewCenterWorld;  // world coords point corresponding to the center of our window.
+    float mWorldUnitsPerPixel;  
 };
 
 }  // namespace ECSEngine

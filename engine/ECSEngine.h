@@ -71,10 +71,18 @@ template <typename... Components>
 ECSEngine<Components...>::~ECSEngine() {}
 
 template <typename... Components>
-void ECSEngine<Components...>::Run() {}
+void ECSEngine<Components...>::Run() {
+    while (mWindowManager.GetWindow()->isOpen()) {
+        mWindowManager.GetWindow()->pollEvent();
+        mSystemManager.Run(this);
+        
+    }
+}
 
 template <typename... Components>
 bool ECSEngine<Components...>::ProcessEvents() {
+    auto window = mWindowManager.GetWindow();
+
     return true;
 }
 
