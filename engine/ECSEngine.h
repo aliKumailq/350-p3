@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <vector>
 
 #include "CameraComponent.h"
@@ -73,15 +74,41 @@ ECSEngine<Components...>::~ECSEngine() {}
 template <typename... Components>
 void ECSEngine<Components...>::Run() {
     while (mWindowManager.GetWindow()->isOpen()) {
-        mWindowManager.GetWindow()->pollEvent();
-        mSystemManager.Run(this);
-        
+        if (!ProcessEvents()) break;
+
+        mWindowManager.GetWindow()->clear();
+        if (!mSystemManager.Run(this)) break;
+        mWindowManager.GetWindow()->display();
     }
 }
 
+// Drain everything the OS queued since last frame. Key events are written straight into every
+// InputComponent's bitset, so the systems later in the frame only ever look at the bitset and never
+// at SFML. Returns false once the window is gone, which is the loop's exit condition.
 template <typename... Components>
 bool ECSEngine<Components...>::ProcessEvents() {
     auto window = mWindowManager.GetWindow();
+
+    while (const std::optional event = window->pollEvent()) {
+        if (event->is<sf::Event::Closed>()) {
+            window->close();
+            return false;
+        }
+
+        if (const auto* key = event->getIf<sf::Event::KeyPressed>()) {
+            const size_t scan = static_cast<size_t>(key->scancode);
+            for (const Entity& e : mEntityManager) {
+                if (mEntityManager.HasComponent<InputComponent>(e.GetID()))
+                    mEntityManager.GetComponent<InputComponent>(e.GetID()).keydown.set(scan);
+            }
+        } else if (const auto* key = event->getIf<sf::Event::KeyReleased>()) {
+            const size_t scan = static_cast<size_t>(key->scancode);
+            for (const Entity& e : mEntityManager) {
+                if (mEntityManager.HasComponent<InputComponent>(e.GetID()))
+                    mEntityManager.GetComponent<InputComponent>(e.GetID()).keydown.reset(scan);
+            }
+        }
+    }
 
     return true;
 }

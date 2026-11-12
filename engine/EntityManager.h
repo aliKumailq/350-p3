@@ -10,6 +10,7 @@
 #include "Entity.h"
 #include "pack.h"
 #include <functional>
+#include <utility>
 
 namespace ECSEngine {
 
@@ -33,11 +34,21 @@ public:
         
     }
 
+    // Clears every component the entity owns, then frees its row so the slot can be handed out
+    // again. The entity index itself stays in the vector -- callers must test IsValid before using
+    // an id they kept, because a freed slot can come back as a different entity.
     void RemoveEntity(EntityID entity) {
+        assert(mEntitiesIdx.valid(entity));
 
+        RemoveAllComponents(entity, std::index_sequence_for<Components...>{});
+        mEntitiesIdx.remove(entity);
     }
 
-    template <typename ComponentType> 
+    // True when this id still refers to a live entity. Anything iterating the entity vector has to
+    // ask this per slot, because removals leave dead gaps behind.
+    bool IsValid(EntityID entity) const { return mEntitiesIdx.valid(entity); }
+
+    template <typename ComponentType>
     void addComponent(EntityID id, ComponentType& component) {
         assert(mEntitiesIdx.valid(id));
         static_assert(contains<ComponentType>);
@@ -118,6 +129,22 @@ public:
         auto& index = mEntityToComponent[idx<T>][e];
         return index;
 
+    }
+
+    // Frees one component slot for this entity, if the entity has it. Used by RemoveEntity so the
+    // sparse set does not leak the slot when the entity goes away.
+    template <size_t I>
+    inline void RemoveComponentAt(EntityID entity) {
+        auto& slot = mEntityToComponent[I][entity];
+        if (slot == kNullComponent) return;
+
+        std::get<I>(mRegistries).remove(slot);
+        slot = kNullComponent;
+    }
+
+    template <size_t... Is>
+    inline void RemoveAllComponents(EntityID entity, std::index_sequence<Is...>) {
+        (RemoveComponentAt<Is>(entity), ...);
     }
 
 
