@@ -2,6 +2,7 @@
 #define MATHUTIL_H
 
 #include <iostream>
+#include <cassert>
 
 namespace ECSEngine {
 
@@ -11,7 +12,33 @@ struct Point2D {
     float x, y;
     Point2D(float x = 0, float y = 0) : x(x), y(y) {}
     Point2D(int x, int y) : x(x), y(y) {}
+
+    inline Point2D& operator+=(const Point2D& other) {
+        x += other.x;
+        y += other.y;
+        return *this;
+    }
+
+    inline Point2D operator+(const Point2D& other) const {
+        return Point2D{x + other.x, y + other.y};
+    }
+
+    inline Point2D operator*(const float& f) const {
+        return {x * f, y * f};
+    }
+
+    inline Point2D operator-(const Point2D& other) const {
+        return {x - other.x, y - other.y};
+    }
+
+    inline Point2D operator/(const float& f) const {
+        assert(f != 0.0f);
+        return {x / f, y / f};
+    }
 };
+
+
+
 
 [[maybe_unused]] static std::ostream& operator<<(std::ostream& os, const Point2D& p) {
     os << "(" << p.x << ", " << p.y << ")";
@@ -45,6 +72,9 @@ struct Circle {
 struct Rect {
     Point2D topLeft;
     float width, height;
+    inline Point2D center() const {
+        return {topLeft.x + 0.5f*width, topLeft.y - 0.5f * height};
+    }
 };
 
 [[maybe_unused]] static std::ostream& operator<<(std::ostream& os, const Rect& r) {
