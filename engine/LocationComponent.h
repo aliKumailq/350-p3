@@ -28,6 +28,7 @@ struct GravityComponent {
         : acceleration(acceleration), disabledTimer(disabledTimer) {}
     Point2D acceleration;  // Acceleration in pixels per second squared
     int disabledTimer;
+    int wallSlideTimer = 0;  // frames left before the slide blip may play again
 };
 
 // location for respawning

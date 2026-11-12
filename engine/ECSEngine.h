@@ -101,8 +101,8 @@ bool ECSEngine<Components...>::ProcessEvents() {
                 if (mEntityManager.HasComponent<InputComponent>(e.GetID()))
                     mEntityManager.GetComponent<InputComponent>(e.GetID()).keydown.set(scan);
             }
-        } else if (const auto* key = event->getIf<sf::Event::KeyReleased>()) {
-            const size_t scan = static_cast<size_t>(key->scancode);
+        } else if (const auto* released = event->getIf<sf::Event::KeyReleased>()) {
+            const size_t scan = static_cast<size_t>(released->scancode);
             for (const Entity& e : mEntityManager) {
                 if (mEntityManager.HasComponent<InputComponent>(e.GetID()))
                     mEntityManager.GetComponent<InputComponent>(e.GetID()).keydown.reset(scan);

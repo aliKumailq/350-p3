@@ -10,6 +10,8 @@
 #include "InputComponent.h"
 #include "LocationComponent.h"
 #include "ScoreComponent.h"
+#include "SoundManager.h"
+#include "SoundNames.h"
 
 namespace ECSEngine {
 
@@ -45,6 +47,13 @@ public:
     }
 
 private:
+    // Play a registered sound if the game set one up. See the note in InputSystem: guarding on
+    // HasSound keeps the systems runnable without audio.
+    static void Play(EngineView<Components...>* engine, const char* name) {
+        auto& sounds = engine->GetSoundManager();
+        if (sounds.HasSound(name)) sounds.GetSound(name).play();
+    }
+
     // Push every dynamic collider out of every static one, then set its contact flags.
     static void ResolveStatics(EngineView<Components...>* engine,
                                EntityManager<Components...>& entities) {
@@ -91,12 +100,19 @@ private:
                         entities.template GetComponent<MovementComponent>(moverID).velocity.x = 0;
                     AddShake(entities, moverID);
                 } else {
+                    // A downward move into a floor that was not on the ground last frame is a
+                    // landing, and that is the one that makes a sound. Checking the previous flag
+                    // is what keeps it to one blip per landing instead of every frame of contact.
+                    const bool wasFalling = !mover.onGround;
+
                     moverLoc.loc.y += depth.y;
                     if (depth.y > 0) mover.onCeiling = true;
                     else mover.onGround = true;
                     if (entities.template HasComponent<MovementComponent>(moverID))
                         entities.template GetComponent<MovementComponent>(moverID).velocity.y = 0;
                     AddShake(entities, moverID);
+
+                    if (wasFalling && mover.onGround) Play(engine, SoundName::kLand);
                 }
             }
         }
@@ -151,6 +167,7 @@ private:
 
                 entities.template GetComponent<ScoreComponent>(holder).score +=
                     entities.template GetComponent<ScoreComponent>(starID).score;
+                Play(engine, SoundName::kStar);
                 collected.push_back(starID);
                 break;
             }

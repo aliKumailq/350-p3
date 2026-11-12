@@ -3,6 +3,8 @@
 #include <algorithm>
 
 #include "Keyboard.h"
+#include "SoundManager.h"
+#include "SoundNames.h"
 
 namespace ECSEngine {
 
@@ -75,6 +77,7 @@ public:
             if (dashPressed && input.lastDash >= kDashInterval) {
                 vx = (vx < 0 ? -1.0f : 1.0f) * kDashVelocity;
                 input.lastDash = 0;
+                Play(engine, SoundName::kDash);
             } else {
                 ++input.lastDash;
             }
@@ -82,7 +85,10 @@ public:
             // Jump is edge triggered and only from the ground. Wall jumps are handled in gravity
             // and collision, because they depend on the wall flags from the previous frame.
             const bool jumpPressed = state.jump && !input.lastKeydown.test(Key::Z);
-            if (jumpPressed && onGround) movement.velocity.y = -kJumpVelocity;
+            if (jumpPressed && onGround) {
+                movement.velocity.y = -kJumpVelocity;
+                Play(engine, SoundName::kJump);
+            }
 
             input.lastKeydown = input.keydown;
         }
@@ -91,6 +97,13 @@ public:
     }
 
 private:
+    // Play a registered sound if the game set it up. Guarding on HasSound keeps the engine usable
+    // without audio: a test harness that never registers sounds still runs, it just stays silent.
+    static void Play(EngineView<Components...>* engine, const char* name) {
+        auto& sounds = engine->GetSoundManager();
+        if (sounds.HasSound(name)) sounds.GetSound(name).play();
+    }
+
     static InputState ReadInput(const InputComponent& input) {
         InputState s;
         s.left  = input.keydown.test(Key::Left);

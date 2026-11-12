@@ -22,6 +22,7 @@
 #include "MovementSystem.h"
 #include "ScoreComponent.h"
 #include "ScoreSystem.h"
+#include "SoundNames.h"
 #include "SpawnComponent.h"
 #include "SpawnSystem.h"
 #include "SpriteComponent.h"
@@ -43,6 +44,7 @@ static constexpr float kPlayerSize = 64.0f;
 // The camera never moves in y. The level is 14 rows of 64-unit tiles (896 tall) and the window is
 // 768, so a centre of 512 frames rows 2..13 -- the playable half.
 static constexpr float kCameraY = 512.0f;
+
 #define COMPONENTS                                                                             \
     ECSEngine::LocationComponent, ECSEngine::MovementComponent, ECSEngine::CollisionComponent, \
         ECSEngine::SpriteComponent, ECSEngine::SpawnComponent, ECSEngine::CameraComponent,     \
@@ -190,7 +192,17 @@ int main(int argc, char* argv[]) {
     // Engine test code
     Engine engine(1024, 768, "Test Engine");
 
-    // Load sounds
+    // Load sounds. From the editor's own sfx set: a jump for leaving the ground, a footstep for
+    // landing, the gem chime for a collected star, the error blip for a wall slide, and a higher
+    // jump for the dash.
+    {
+        auto& sounds = engine.GetSoundManager();
+        sounds.RegisterSound("assets/sfx_jump.ogg", ECSEngine::SoundName::kJump);
+        sounds.RegisterSound("assets/footstep_grass_003.ogg", ECSEngine::SoundName::kLand);
+        sounds.RegisterSound("assets/sfx_gem.ogg", ECSEngine::SoundName::kStar);
+        sounds.RegisterSound("assets/error_008.ogg", ECSEngine::SoundName::kWallSlide);
+        sounds.RegisterSound("assets/sfx_jump-high.ogg", ECSEngine::SoundName::kDash);
+    }
 
     // Load maps
     LoadMap(engine, "assets", "sky.map");

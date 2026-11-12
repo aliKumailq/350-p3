@@ -55,6 +55,7 @@ set(ECS_SYSTEM_FILES
 set(ECS_MANAGER_FILES
     EntityManager.h
     SoundManager.h SoundManager.cpp
+    SoundNames.h
     SpriteManager.h SpriteManager.cpp
     SystemManager.h
     WindowManager.h WindowManager.cpp
