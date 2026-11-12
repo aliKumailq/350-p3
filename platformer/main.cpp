@@ -236,15 +236,31 @@ int main(int argc, char* argv[]) {
         ECSEngine::ScoreComponent scoreComponent{};
         scoreComponent.score = 0;
         for (int d = 0; d < 10; ++d) {
-            // The digits sit in the last row of the tiles sheet, one 64x64 cell each.
+            // The numerals are one column of the tiles sheet, counting down 9..0 from the top.
+            const float cellY = 256.0f + static_cast<float>(9 - d) * 64.0f;
             scoreComponent.digitTextureID[d] = spriteManager.RegisterTexture(
                 "assets/spritesheet-tiles-default.png",
-                ECSEngine::Rect{ECSEngine::Point2D{static_cast<float>(d) * 64.0f, 768.0f}, 64.0f, 64.0f});
+                ECSEngine::Rect{ECSEngine::Point2D{832.0f, cellY}, 64.0f, 64.0f});
         }
 
         const ECSEngine::EntityID hud = entityManager.CreateEntity("hud");
         ECSEngine::LocationComponent hudLoc{{8.0f, 8.0f}};
         entityManager.addComponent<ECSEngine::LocationComponent>(hud, hudLoc);
+
+        // Three digit entities, written by ScoreSystem. They live in screen space, so the camera
+        // transform never touches them.
+        for (int slot = 0; slot < 3; ++slot) {
+            const ECSEngine::EntityID digit = entityManager.CreateEntity("hud-digit");
+            ECSEngine::SpriteComponent digitSprite{
+                scoreComponent.digitTextureID[0],
+                {{hudLoc.loc.x + static_cast<float>(slot) * 30.0f, hudLoc.loc.y}, 32.0f, 32.0f},
+                false};
+            ECSEngine::LocationComponent digitLoc{{0.0f, 0.0f}};
+            entityManager.addComponent<ECSEngine::SpriteComponent>(digit, digitSprite);
+            entityManager.addComponent<ECSEngine::LocationComponent>(digit, digitLoc);
+            scoreComponent.digitID[slot] = digit;
+        }
+
         entityManager.addComponent<ECSEngine::ScoreComponent>(hud, scoreComponent);
     }
 
