@@ -69,8 +69,8 @@ void LoadMap(Engine& engine, const std::string& path, const std::string& file) {
 
         const char sym = current_parse[0];
 
-        std::getline(line_stream, current_parse, ' ');        
-        std::string file_path = std::filesystem::path{path} / std::filesystem::path{current_parse};
+        std::getline(line_stream, current_parse, ' ');
+        std::string file_path = (std::filesystem::path{path} / std::filesystem::path{current_parse}).string();
 
 
         std::vector<float> pts(hasBounds ? 8 : 4,0.0f);

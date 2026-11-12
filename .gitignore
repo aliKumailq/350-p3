@@ -7,7 +7,8 @@
 
 # Linker output
 *.ilk
-*.map
+# linker map files only -- the level maps in assets/ are also *.map and must be tracked
+/*.map
 *.exp
 
 # Precompiled Headers

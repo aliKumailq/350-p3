@@ -73,11 +73,12 @@ public:
         return std::get<idx<T>>(mRegistries)[GetComponentIdx<T>(entity)];
     }
 
+    // The whole dense array for one component type, so a system can walk one storage instead of
+    // round-tripping every entity through HasComponent. The reference lives as long as the manager.
     template <typename T>
     ComponentStorage<T>& GetComponentStorage() {
-        // Re-write code
-        static ComponentStorage<T> dummy;
-        return dummy;
+        static_assert(contains<T>);
+        return std::get<idx<T>>(mRegistries);
     }
 
     using tEntity = std::vector<Entity>;
