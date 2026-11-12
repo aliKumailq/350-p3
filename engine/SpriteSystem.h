@@ -30,13 +30,9 @@ public:
     tSystemReturn Run(EngineView<Components...>* engine) override {
 
       auto& entities = engine->GetEntityManager();
-      const std::vector<LocationComponent>& locations = entities.template GetComponentStorage<LocationComponent>().mStorage;
-      const std::vector<SpriteComponent>& sprites = entities.template GetComponentStorage<SpriteComponent>().mStorage;
-      
 
       const WindowManager& windowManager = engine->GetWindowManager();
       auto& spriteManager = engine->GetSpriteManager();
-      assert(locations.size() == sprites.size());
 
       for (const Entity& entity : entities) {
         if (!entities.template HasComponent<SpriteComponent>(entity.GetID())) continue; 

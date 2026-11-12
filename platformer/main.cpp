@@ -34,10 +34,15 @@ std::string gResourcePath = "../assets/";
 // Frames between star spawns, and how many stars stay alive at once.
 static constexpr int kSpawnInterval = 30;
 
-// Where the player starts, and the sprite sheet cells for the player and the star.
-static constexpr float kPlayerStartX = 256.0f;
-static constexpr float kPlayerStartY = 320.0f;
+// Where the player starts. The floor is row 10 of world.map (y = 640) and the player is one tile
+// tall, so spawning at y = 576 puts it one tile clear of the ground.
+static constexpr float kPlayerStartX = 768.0f;
+static constexpr float kPlayerStartY = 576.0f;
 static constexpr float kPlayerSize = 64.0f;
+
+// The camera never moves in y. The level is 14 rows of 64-unit tiles (896 tall) and the window is
+// 768, so a centre of 512 frames rows 2..13 -- the playable half.
+static constexpr float kCameraY = 512.0f;
 #define COMPONENTS                                                                             \
     ECSEngine::LocationComponent, ECSEngine::MovementComponent, ECSEngine::CollisionComponent, \
         ECSEngine::SpriteComponent, ECSEngine::SpawnComponent, ECSEngine::CameraComponent,     \
@@ -193,7 +198,7 @@ int main(int argc, char* argv[]) {
 
     engine.GetWindowManager().GetWindow()->setFramerateLimit(30);
     engine.GetWindowManager().SetWorldScale(1);
-    engine.GetWindowManager().SetWorldCenter({1152, 350});
+    engine.GetWindowManager().SetWorldCenter({kPlayerStartX, kCameraY});
 
     // Place player. The character sheet's first 128x128 cell is the orange alien; the sprite is
     // scaled down to a 64-unit box so it fits the tile grid.
@@ -270,7 +275,7 @@ int main(int argc, char* argv[]) {
         const ECSEngine::EntityID camera = entityManager.CreateEntity("camera");
 
         ECSEngine::CameraComponent cameraComponent{};
-        cameraComponent.position = {kPlayerStartX, 350.0f};
+        cameraComponent.position = {kPlayerStartX, kCameraY};
         cameraComponent.worldUnitsPerPixel = 1.0f;
         cameraComponent.speed = 1.0f;
 
