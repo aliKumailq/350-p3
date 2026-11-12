@@ -39,7 +39,7 @@ public:
       assert(locations.size() == sprites.size());
 
       for (const Entity& entity : entities) {
-        if (!entities.template HasComponent<SpriteComponent>(entity.GetID())) continue;
+        if (!entities.template HasComponent<SpriteComponent>(entity.GetID())) continue; 
 
         SpriteComponent& spriteComp = entities.template GetComponent<SpriteComponent>(entity.GetID());
 
@@ -47,10 +47,10 @@ public:
         sf::Vector2f finalPosition{};
         sf::Vector2f finalScale{};
 
-        if (spriteComp.worldSpace) { // spriteComp.bounds is in world space
+        assert(entities.template HasComponent<LocationComponent>(entity.GetID()));
+        LocationComponent& curLocComp = entities.template GetComponent<LocationComponent>(entity.GetID());
 
-          assert(entities.template HasComponent<LocationComponent>(entity.GetID()));
-          LocationComponent& curLocComp = entities.template GetComponent<LocationComponent>(entity.GetID());
+        if (spriteComp.worldSpace) { // spriteComp.bounds is in world space
           auto finalRectS = spriteComp.bounds;
           finalRectS.topLeft += curLocComp.loc;
           finalRectS = windowManager.WorldToWindow(finalRectS);
@@ -63,7 +63,7 @@ public:
 
 
         } else {
-          finalPosition = SfHelper::SfPnt<float>(spriteComp.bounds.topLeft);
+          finalPosition = SfHelper::SfPnt<float>(spriteComp.bounds.topLeft + curLocComp.loc);
           using namespace SfHelper;
           finalScale = sf::Vector2{spriteComp.bounds.width, spriteComp.bounds.height} / static_cast<sf::Vector2f>(sprite.getTextureRect().size);
 
