@@ -30,6 +30,14 @@
 #include <SFML/Graphics/Texture.hpp>
 
 std::string gResourcePath = "../assets/";
+
+// Frames between star spawns, and how many stars stay alive at once.
+static constexpr int kSpawnInterval = 30;
+
+// Where the player starts, and the sprite sheet cells for the player and the star.
+static constexpr float kPlayerStartX = 256.0f;
+static constexpr float kPlayerStartY = 320.0f;
+static constexpr float kPlayerSize = 64.0f;
 #define COMPONENTS                                                                             \
     ECSEngine::LocationComponent, ECSEngine::MovementComponent, ECSEngine::CollisionComponent, \
         ECSEngine::SpriteComponent, ECSEngine::SpawnComponent, ECSEngine::CameraComponent,     \
@@ -108,37 +116,54 @@ void LoadMap(Engine& engine, const std::string& path, const std::string& file) {
     ECSEngine::Point2D worldSize{pts[4], pts[5]};
 
     
-    for (size_t i = 0; i < static_cast<size_t>(pts[5]); ++i) {
+    auto& entityManager = engine.GetEntityManager();
+
+    for (size_t row = 0; row < static_cast<size_t>(pts[5]); ++row) {
         std::getline(fs, line);
         assert(line.size() == static_cast<size_t>(pts[4]));
 
-        for (size_t j = 0; j < static_cast<size_t>(pts[4]); ++j) {
-            if (!c.contains(line[j])) continue; // skip over shit we dont care about.
-            ECSEngine::SpriteComponent spritecomp{c[line[j]].id, {(ECSEngine::Point2D{static_cast<float>(j),static_cast<float>(i)} * scale), pts[2], pts[3]}, true};
-            ECSEngine::LocationComponent loc(origin);
-            auto& entityManager = engine.GetEntityManager();
-            auto id = entityManager.CreateEntity("fart");
-            entityManager.template addComponent<ECSEngine::SpriteComponent>(id, spritecomp);
-            entityManager.template addComponent<ECSEngine::LocationComponent>(id,loc);
+        for (size_t col = 0; col < static_cast<size_t>(pts[4]); ++col) {
+            const char symbol = line[col];
+            if (!c.contains(symbol)) continue;  // blank or unused character, nothing to place
 
-            if (line[j] == 'S') {
-                ECSEngine::SpawnComponent spawner;
-                spawner.spawnTextureID = c[line[j]].id;
+            // The grid cell's world position. Every entity gets its own location, which is what
+            // the sprite and collision systems treat as the entity's origin.
+            const ECSEngine::Point2D cellLoc{origin.x + static_cast<float>(col) * scale,
+                                             origin.y + static_cast<float>(row) * scale};
+
+            // The sprite's draw box is relative to the entity location, so it starts at the cell's
+            // top-left and is one tile wide and tall.
+            ECSEngine::SpriteComponent sprite{c[symbol].id, {ECSEngine::Point2D{0.0f, 0.0f}, scale, scale}, true};
+            ECSEngine::LocationComponent loc{cellLoc};
+
+            const ECSEngine::EntityID id = entityManager.CreateEntity("tile");
+
+            // The spawner tile has no sprite of its own -- it is a marker. It gets a spawn
+            // component instead and is otherwise invisible.
+            if (symbol == 'S') {
+                ECSEngine::SpawnComponent spawner{};
                 spawner.entityID = id;
-                // WARNING: Rest of the spawner values have not been initialized. 
+                spawner.spawnTextureID = c['S'].id;
+                spawner.spawnType = "star";
+                spawner.timeToNextSpawn = kSpawnInterval;
+                spawner.timeBetweenSpawns = kSpawnInterval;
+                spawner.totalSpawns = -1;  // keep going
                 entityManager.template addComponent<ECSEngine::SpawnComponent>(id, spawner);
+                entityManager.template addComponent<ECSEngine::LocationComponent>(id, loc);
+                continue;
             }
-            
+
+            entityManager.template addComponent<ECSEngine::SpriteComponent>(id, sprite);
+            entityManager.template addComponent<ECSEngine::LocationComponent>(id, loc);
+
             if (hasBounds) {
+                const auto& info = c[symbol].bounds;
                 ECSEngine::CollisionComponent collision{};
                 collision.staticEntity = true;
-                const auto& info = c[line[j]].bounds;
-                ECSEngine::Rect boundingBox{info->offset, info->width, info->height};
-                collision.collisionBox = boundingBox;
+                collision.collisionBox = {info->offset, info->width, info->height};
                 entityManager.template addComponent<ECSEngine::CollisionComponent>(id, collision);
             }
         }
-
     }
 
 
@@ -170,11 +195,75 @@ int main(int argc, char* argv[]) {
     engine.GetWindowManager().SetWorldScale(1);
     engine.GetWindowManager().SetWorldCenter({1152, 350});
 
-    // Place player
+    // Place player. The character sheet's first 128x128 cell is the orange alien; the sprite is
+    // scaled down to a 64-unit box so it fits the tile grid.
+    ECSEngine::EntityID player = 0;
+    {
+        auto& entityManager = engine.GetEntityManager();
+        ECSEngine::SpriteID playerSprite = engine.GetSpriteManager().RegisterTexture(
+            "assets/spritesheet-characters-default.png",
+            ECSEngine::Rect{ECSEngine::Point2D{0.0f, 0.0f}, 128.0f, 128.0f});
 
-    // Setup score component
+        player = entityManager.CreateEntity("player");
 
-    // Setup Camera
+        ECSEngine::LocationComponent playerLoc{{kPlayerStartX, kPlayerStartY}};
+        ECSEngine::MovementComponent playerMove{{0.0f, 0.0f}};
+        ECSEngine::SpriteComponent playerSpriteComp{
+            playerSprite, {ECSEngine::Point2D{0.0f, 0.0f}, kPlayerSize, kPlayerSize}, true};
+        ECSEngine::CollisionComponent playerCollision{};
+        playerCollision.collisionBox = {{0.0f, 0.0f}, kPlayerSize, kPlayerSize};
+        ECSEngine::GravityComponent playerGravity{{0.0f, 1.0f}};
+        ECSEngine::InputComponent playerInput{player};
+        ECSEngine::CameraShake playerShake{};
+        ECSEngine::RespawnComponent playerSpawn{{kPlayerStartX, kPlayerStartY}};
+
+        entityManager.addComponent<ECSEngine::LocationComponent>(player, playerLoc);
+        entityManager.addComponent<ECSEngine::MovementComponent>(player, playerMove);
+        entityManager.addComponent<ECSEngine::SpriteComponent>(player, playerSpriteComp);
+        entityManager.addComponent<ECSEngine::CollisionComponent>(player, playerCollision);
+        entityManager.addComponent<ECSEngine::GravityComponent>(player, playerGravity);
+        entityManager.addComponent<ECSEngine::InputComponent>(player, playerInput);
+        entityManager.addComponent<ECSEngine::CameraShake>(player, playerShake);
+        entityManager.addComponent<ECSEngine::RespawnComponent>(player, playerSpawn);
+    }
+
+    // Setup score component. The HUD digit sprites come from the tiles sheet, which is where the
+    // number glyphs live.
+    {
+        auto& entityManager = engine.GetEntityManager();
+        auto& spriteManager = engine.GetSpriteManager();
+
+        ECSEngine::ScoreComponent scoreComponent{};
+        scoreComponent.score = 0;
+        for (int d = 0; d < 10; ++d) {
+            // The digits sit in the last row of the tiles sheet, one 64x64 cell each.
+            scoreComponent.digitTextureID[d] = spriteManager.RegisterTexture(
+                "assets/spritesheet-tiles-default.png",
+                ECSEngine::Rect{ECSEngine::Point2D{static_cast<float>(d) * 64.0f, 768.0f}, 64.0f, 64.0f});
+        }
+
+        const ECSEngine::EntityID hud = entityManager.CreateEntity("hud");
+        ECSEngine::LocationComponent hudLoc{{8.0f, 8.0f}};
+        entityManager.addComponent<ECSEngine::LocationComponent>(hud, hudLoc);
+        entityManager.addComponent<ECSEngine::ScoreComponent>(hud, scoreComponent);
+    }
+
+    // Setup Camera. One camera entity, pinned to the player, with a fixed y from the map.
+    {
+        auto& entityManager = engine.GetEntityManager();
+        const ECSEngine::EntityID camera = entityManager.CreateEntity("camera");
+
+        ECSEngine::CameraComponent cameraComponent{};
+        cameraComponent.position = {kPlayerStartX, 350.0f};
+        cameraComponent.worldUnitsPerPixel = 1.0f;
+        cameraComponent.speed = 1.0f;
+
+        ECSEngine::CameraFollower follower{};
+        follower.entityID = player;
+
+        entityManager.addComponent<ECSEngine::CameraComponent>(camera, cameraComponent);
+        entityManager.addComponent<ECSEngine::CameraFollower>(camera, follower);
+    }
 
     // Add all systems
     auto& sm = engine.GetSystemManager();
