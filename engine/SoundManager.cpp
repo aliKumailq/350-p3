@@ -7,7 +7,7 @@ namespace ECSEngine {
 void SoundManager::RegisterSound(const std::string& soundPath, const std::string& soundName) {
     // Already decoded under this name: keep the existing buffer and voice, do nothing. That is what
     // makes a second call harmless rather than a reload.
-    if (mBuffers.contains(soundName)) return;
+    if (mBuffers.find(soundName) != mBuffers.end()) return;
 
     // operator[] on the map default-constructs the buffer in place and hands back a reference.
     // Because the map owns it, the buffer's address is stable for the manager's whole lifetime --
@@ -27,7 +27,7 @@ sf::Sound& SoundManager::GetSound(const std::string& soundName) {
 }
 
 bool SoundManager::HasSound(const std::string& soundName) const {
-    return mSounds.contains(soundName);
+    return mSounds.find(soundName) != mSounds.end();
 }
 
 }  // namespace ECSEngine

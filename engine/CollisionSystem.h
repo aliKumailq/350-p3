@@ -80,7 +80,13 @@ private:
             auto& mover = entities.template GetComponent<CollisionComponent>(moverID);
             if (mover.staticEntity) continue;
 
-            const bool wasFalling = !mover.onGround; 
+            // The player owns an InputComponent; every other mover is a loose object (a star), which
+            // bounces and does not make a footstep when it settles.
+            const bool isPlayer = entities.template HasComponent<InputComponent>(moverID);
+
+            // Where we were before this frame's resolve. Landing is the edge from "not on the ground"
+            // to "on the ground", so it has to be read before the flags are cleared.
+            const bool wasOnGround = mover.onGround;
 
             mover.onGround = false;
             mover.onCeiling = false;
@@ -105,10 +111,9 @@ private:
                 const Rect tileBox = CollisionUtil::WorldBox(tile, tileLoc);
                 if (!CollisionUtil::Overlaps(moverBox, tileBox)) continue;
 
-                // Who bounces and who stops? The player owns an InputComponent; everything else
-                // that moves is a loose object (stars), and those should ricochet and lose speed
-                // rather than stick to the wall.
-                const bool bounces = !entities.template HasComponent<InputComponent>(moverID);
+                // Who bounces and who stops? The player stops against a wall; a loose object (star)
+                // ricochets and loses speed rather than sticking to it.
+                const bool bounces = !isPlayer;
                 const bool hasMovement = entities.template HasComponent<MovementComponent>(moverID);
                 auto& velocity = hasMovement ? entities.template GetComponent<MovementComponent>(moverID).velocity
                                              : sZeroVelocity;
@@ -127,20 +132,14 @@ private:
                     // Reflect off the vertical face, keeping a fraction of the speed. Stopping dead
                     // would make a spawned star die on the first wall it met.
                     velocity.x = bounces ? -velocity.x * kStarBounceDamping : 0.0f;
-                    if (IsHeadOn(mover, old_vel)) AddShake(entities, moverID);
+                    if (IsHeadOn(mover, old_vel)) AddShake(entities, moverID, old_vel);
                 } else {
-                    // A downward move into a floor that was not on the ground last frame is a
-                    // landing, and that is the one that makes a sound. Checking the previous flag
-                    // is what keeps it to one blip per landing instead of every frame of contact.
-
                     moverLoc.loc.y += depth.y;
                     if (depth.y > 0) mover.onCeiling = true;
                     else mover.onGround = true;
 
                     velocity.y = bounces ? -velocity.y * kStarBounceDamping : 0.0f;
-                    if (IsHeadOn(mover, old_vel)) AddShake(entities, moverID);
-
-                    if (wasFalling && mover.onGround) Play(engine, SoundName::kLand);
+                    if (IsHeadOn(mover, old_vel)) AddShake(entities, moverID, old_vel);
                 }
 
                 // A bouncer that has slowed to a crawl is parked on the wall it hit, so zero it
@@ -150,6 +149,11 @@ private:
                     velocity = {0.0f, 0.0f};
                 }
             }
+
+            // Landing is an edge: off the ground last frame and on it now. Played once per mover,
+            // after every tile is considered -- inside the tile loop it fires again for each floor
+            // tile the player overlaps. Only the player lands audibly; a settling star does not.
+            if (isPlayer && !wasOnGround && mover.onGround) Play(engine, SoundName::kLand);
         }
     }
 
@@ -214,9 +218,9 @@ private:
         }
     }
 
-    // A star is a dynamic collider that carries a ScoreComponent for its value. The score holder is
-    // the one entity with a ScoreComponent and no collider. So "scores" are two uses of the same
-    // component: a running total on the HUD entity, a point value on each star.
+    // A star is a dynamic collider that moves and is not the player: the player owns an InputComponent,
+    // a star owns a MovementComponent. The score holder is the one entity with a ScoreComponent and no
+    // collider, so a star carries no score of its own -- every star is worth kScorePoints.
     static void CollectStars(EngineView<Components...>* engine,
                              EntityManager<Components...>& entities) {
         std::vector<EntityID> collected;
@@ -239,6 +243,7 @@ private:
             if (!entities.IsValid(starID)) continue;
             if (!entities.template HasComponent<CollisionComponent>(starID)) continue;
             if (!entities.template HasComponent<LocationComponent>(starID)) continue;
+            if (!entities.template HasComponent<MovementComponent>(starID)) continue;
 
             const auto& starCol = entities.template GetComponent<CollisionComponent>(starID);
             if (starCol.staticEntity) continue;
@@ -272,21 +277,22 @@ private:
         for (EntityID id : collected) entities.RemoveEntity(id);
     }
 
-    // Kick the camera. The magnitude scales with how fast we were going into the contact, so a slow
-    // walk is a nudge and a dash into a wall is a real jolt.
-    static void AddShake(EntityManager<Components...>& entities, EntityID mover) {
+    // Kick the camera opposite the motion, scaled by how fast we were going into the contact, so a
+    // slow walk is a nudge and a dash into a wall is a real jolt. `hitVelocity` is the velocity from
+    // before the resolve: by now the collision axis has been zeroed, and reading it here would always
+    // measure zero and shake nothing.
+    static void AddShake(EntityManager<Components...>& entities, EntityID mover,
+                         const Point2D& hitVelocity) {
         if (!entities.template HasComponent<MovementComponent>(mover)) return;
         if (!entities.template HasComponent<CameraShake>(mover)) return;
 
-        const auto& velocity = entities.template GetComponent<MovementComponent>(mover).velocity;
-        const float speed = std::sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
+        const float speed =
+            std::sqrt(hitVelocity.x * hitVelocity.x + hitVelocity.y * hitVelocity.y);
         if (speed < 0.01f) return;
 
         auto& shake = entities.template GetComponent<CameraShake>(mover);
-        const float magnitude = speed * kShakePerSpeed;
         shake.frameLimit = kShakeFrames;
-        shake.offset = {velocity.x > 0 ? -magnitude : magnitude,
-                        velocity.y > 0 ? -magnitude : magnitude};
+        shake.offset = {-hitVelocity.x * kShakePerSpeed, -hitVelocity.y * kShakePerSpeed};
     }
 
     static inline bool IsHeadOn(const CollisionComponent& mover, const Point2D& old_vel) {

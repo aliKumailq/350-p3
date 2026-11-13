@@ -1,6 +1,7 @@
 #pragma once
 
 #include <bitset>
+#include <cstdint>
 #include <unordered_map>
 
 #include "MathUtil.h"

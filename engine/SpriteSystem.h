@@ -1,6 +1,7 @@
 #pragma once
 
 #include <bitset>
+#include <cassert>
 #include <unordered_map>
 
 #include "CameraComponent.h"

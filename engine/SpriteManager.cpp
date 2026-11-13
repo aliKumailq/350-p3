@@ -9,7 +9,7 @@ namespace ECSEngine {
 SpriteID SpriteManager::RegisterTexture(const std::string& texturePath, const Rect& sourceRect) {
     
     auto getTexture = [&texturePath](TextMap& mPathToTexture) -> sf::Texture& {
-        if (!mPathToTexture.contains(texturePath)) {
+        if (mPathToTexture.find(texturePath) == mPathToTexture.end()) {
             sf::Texture& texture = mPathToTexture[texturePath] = sf::Texture();
             assert(texture.loadFromFile(texturePath));
             return texture;

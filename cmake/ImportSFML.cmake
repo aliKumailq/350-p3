@@ -1,6 +1,8 @@
 include_guard(GLOBAL)
 
-set(SFML_ROOT "${CMAKE_CURRENT_LIST_DIR}/../extern/sfml-3.1.0-linux-x86_64-ubuntu20.04")
+# Cached so the platformer target (a sibling directory) can add this lib folder to its runtime path.
+set(SFML_ROOT "${CMAKE_CURRENT_LIST_DIR}/../extern/sfml-3.1.0-linux-x86_64-ubuntu20.04"
+    CACHE PATH "Bundled SFML 3.1.0 for the Ubuntu 20.04 lab image")
 
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" OR NOT CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64|AMD64)$")
     message(FATAL_ERROR "Bundled SFML is meant for the lab machines and it requires Linux x86-64 (Ubuntu 20.04); detected ${CMAKE_SYSTEM_NAME}/${CMAKE_SYSTEM_PROCESSOR}.")
