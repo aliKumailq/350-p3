@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <limits>
+#include <utility>
 #include <vector>
 
 #include "CameraComponent.h"
@@ -19,6 +20,16 @@ namespace ECSEngine {
 // nudge and a full-speed dash is a shove.
 const float kShakePerSpeed = 0.35f;
 const int kShakeFrames = 8;
+
+// How much speed a loose object keeps after hitting a wall. Losing some on every bounce is what the
+// assignment asks for, and it also stops a star rattling forever in a corner.
+const float kStarBounceDamping = 0.72f;
+
+// Below this speed a bouncing object stops instead of jittering against the wall forever.
+const float kStarRestSpeed = 0.35f;
+
+// Stand-in so the resolve can name a velocity even for an entity that has no movement component.
+inline Point2D sZeroVelocity{};
 
 // Runs after movement, so every box is already at its new position. Two passes:
 
@@ -41,6 +52,7 @@ public:
         auto& entities = engine->GetEntityManager();
 
         ResolveStatics(engine, entities);
+        ResolveDynamicPairs(entities);
         CollectStars(engine, entities);
 
         return kContinue;
@@ -89,6 +101,15 @@ private:
                 const Rect tileBox = CollisionUtil::WorldBox(tile, tileLoc);
                 if (!CollisionUtil::Overlaps(moverBox, tileBox)) continue;
 
+                // Who bounces and who stops? The player owns an InputComponent; everything else
+                // that moves is a loose object (stars), and those should ricochet and lose speed
+                // rather than stick to the wall.
+                const bool bounces = !entities.template HasComponent<InputComponent>(moverID);
+                const bool hasMovement = entities.template HasComponent<MovementComponent>(moverID);
+                auto& velocity = hasMovement ? entities.template GetComponent<MovementComponent>(moverID).velocity
+                                             : sZeroVelocity;
+                if (!hasMovement) continue;
+
                 // Resolve along whichever axis is less buried. That is what makes a floor push you
                 // up rather than sideways when you land near a corner.
                 const Point2D depth = CollisionUtil::Penetration(moverBox, tileBox);
@@ -96,8 +117,10 @@ private:
                     moverLoc.loc.x += depth.x;
                     if (depth.x > 0) mover.onLeftWall = true;
                     else mover.onRightWall = true;
-                    if (entities.template HasComponent<MovementComponent>(moverID))
-                        entities.template GetComponent<MovementComponent>(moverID).velocity.x = 0;
+
+                    // Reflect off the vertical face, keeping a fraction of the speed. Stopping dead
+                    // would make a spawned star die on the first wall it met.
+                    velocity.x = bounces ? -velocity.x * kStarBounceDamping : 0.0f;
                     AddShake(entities, moverID);
                 } else {
                     // A downward move into a floor that was not on the ground last frame is a
@@ -108,11 +131,79 @@ private:
                     moverLoc.loc.y += depth.y;
                     if (depth.y > 0) mover.onCeiling = true;
                     else mover.onGround = true;
-                    if (entities.template HasComponent<MovementComponent>(moverID))
-                        entities.template GetComponent<MovementComponent>(moverID).velocity.y = 0;
+
+                    velocity.y = bounces ? -velocity.y * kStarBounceDamping : 0.0f;
                     AddShake(entities, moverID);
 
                     if (wasFalling && mover.onGround) Play(engine, SoundName::kLand);
+                }
+
+                // A bouncer that has slowed to a crawl is parked on the wall it hit, so zero it
+                // rather than let it twitch against the surface every frame.
+                if (bounces && std::abs(velocity.x) < kStarRestSpeed &&
+                    std::abs(velocity.y) < kStarRestSpeed) {
+                    velocity = {0.0f, 0.0f};
+                }
+            }
+        }
+    }
+
+    // Two loose objects that run into each other. The assignment leaves the exact behaviour open,
+    // so this is an elastic swap: they push apart along the line between their centres and trade
+    // velocity along that line. Bouncing off each other is more interesting to watch than passing
+    // through, and it keeps the field from collapsing into a pile.
+    static void ResolveDynamicPairs(EntityManager<Components...>& entities) {
+        std::vector<EntityID> bouncers;
+        for (const Entity& entity : entities) {
+            const EntityID id = entity.GetID();
+            if (!entities.IsValid(id)) continue;
+            if (!entities.template HasComponent<CollisionComponent>(id)) continue;
+            if (!entities.template HasComponent<LocationComponent>(id)) continue;
+            if (!entities.template HasComponent<MovementComponent>(id)) continue;
+            if (entities.template HasComponent<InputComponent>(id)) continue;  // the player handles itself
+            if (entities.template GetComponent<CollisionComponent>(id).staticEntity) continue;
+            bouncers.push_back(id);
+        }
+
+        for (size_t i = 0; i < bouncers.size(); ++i) {
+            for (size_t j = i + 1; j < bouncers.size(); ++j) {
+                const EntityID aID = bouncers[i];
+                const EntityID bID = bouncers[j];
+
+                const auto& aCol = entities.template GetComponent<CollisionComponent>(aID);
+                const auto& bCol = entities.template GetComponent<CollisionComponent>(bID);
+                const auto& aLoc = entities.template GetComponent<LocationComponent>(aID);
+                const auto& bLoc = entities.template GetComponent<LocationComponent>(bID);
+
+                const Rect aBox = CollisionUtil::WorldBox(aCol, aLoc);
+                const Rect bBox = CollisionUtil::WorldBox(bCol, bLoc);
+                if (!CollisionUtil::Overlaps(aBox, bBox)) continue;
+
+                const Point2D depth = CollisionUtil::Penetration(aBox, bBox);
+
+                // Separate along the shallower axis, moving both half of the overlap each.
+                auto& aLocMut = entities.template GetComponent<LocationComponent>(aID);
+                auto& bLocMut = entities.template GetComponent<LocationComponent>(bID);
+                if (std::abs(depth.x) < std::abs(depth.y)) {
+                    aLocMut.loc.x += depth.x * 0.5f;
+                    bLocMut.loc.x -= depth.x * 0.5f;
+                } else {
+                    aLocMut.loc.y += depth.y * 0.5f;
+                    bLocMut.loc.y -= depth.y * 0.5f;
+                }
+
+                // Trade the velocity along the axis they were separated on, damped, so the two
+                // stars rebound off one another rather than merging.
+                auto& aVel = entities.template GetComponent<MovementComponent>(aID).velocity;
+                auto& bVel = entities.template GetComponent<MovementComponent>(bID).velocity;
+                if (std::abs(depth.x) < std::abs(depth.y)) {
+                    std::swap(aVel.x, bVel.x);
+                    aVel.x *= kStarBounceDamping;
+                    bVel.x *= kStarBounceDamping;
+                } else {
+                    std::swap(aVel.y, bVel.y);
+                    aVel.y *= kStarBounceDamping;
+                    bVel.y *= kStarBounceDamping;
                 }
             }
         }
