@@ -10,7 +10,7 @@ namespace ECSEngine {
 // The dead zone, as fractions of the window width.
 const float kCameraDeadZoneInner = 0.30f;
 const float kCameraDeadZoneOuter = 0.10f;
-const float kCameraTween = 0.12f;
+const float kCameraTween = 0.05f;
 
 // Fixed in y, follows in x. Three zones, straight from the assignment:
 
