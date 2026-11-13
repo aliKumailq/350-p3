@@ -80,7 +80,9 @@ public:
 			// frame is deliberate: this frame's flags are not decided until CollisionSystem runs.
 			if (gravity.wallSlideTimer > 0) --gravity.wallSlideTimer;
 
-			if (entities.template HasComponent<CollisionComponent>(id)) {
+			bool hasCollision = entities.template HasComponent<CollisionComponent>(id);
+
+			if (hasCollision) {
 				const auto& collision = entities.template GetComponent<CollisionComponent>(id);
 				const bool pushingWall = collision.onLeftWall || collision.onRightWall;
 				if (pushingWall && movement.velocity.y > 0) {
@@ -98,7 +100,11 @@ public:
 				}
 			}
 
-			movement.velocity.y += acceleration;
+			if (!hasCollision) movement.velocity.y += acceleration;
+			else {
+				const auto& col = entities.template GetComponent<CollisionComponent>(id);
+				if (!col.onGround) movement.velocity.y += acceleration;;
+			}
 		}
 
 		return kContinue;

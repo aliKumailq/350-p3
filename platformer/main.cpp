@@ -38,7 +38,7 @@ static constexpr int kSpawnInterval = 30;
 // Where the player starts. The floor is row 10 of world.map (y = 640) and the player is one tile
 // tall, so spawning at y = 576 puts it one tile clear of the ground.
 static constexpr float kPlayerStartX = 768.0f;
-static constexpr float kPlayerStartY = 576.0f;
+static constexpr float kPlayerStartY = 570.0f;
 static constexpr float kPlayerSize = 64.0f;
 
 // The camera never moves in y. The level is 14 rows of 64-unit tiles (896 tall) and the window is
@@ -238,6 +238,7 @@ int main(int argc, char* argv[]) {
         ECSEngine::MovementComponent playerMove{{0.0f, 0.0f}};
         ECSEngine::SpriteComponent playerSpriteComp{
             playerSprite, {ECSEngine::Point2D{0.0f, 0.0f}, kPlayerSize, kPlayerSize}, true};
+
         ECSEngine::CollisionComponent playerCollision{};
         playerCollision.collisionBox = {{0.0f, 0.0f}, kPlayerSize, kPlayerSize};
         ECSEngine::GravityComponent playerGravity{{0.0f, 1.0f}};

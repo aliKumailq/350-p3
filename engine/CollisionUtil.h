@@ -19,8 +19,8 @@ inline Rect WorldBox(const CollisionComponent& collision, const LocationComponen
 }
 
 inline bool Overlaps(const Rect& a, const Rect& b) {
-    return a.topLeft.x < b.topLeft.x + b.width && b.topLeft.x < a.topLeft.x + a.width &&
-           a.topLeft.y < b.topLeft.y + b.height && b.topLeft.y < a.topLeft.y + a.height;
+    return a.topLeft.x <= b.topLeft.x + b.width && b.topLeft.x <= a.topLeft.x + a.width &&
+           a.topLeft.y <= b.topLeft.y + b.height && b.topLeft.y <= a.topLeft.y + a.height;
 }
 
 // How far a overlap b on each axis. Used to push the moving box back out along the shallower axis,
