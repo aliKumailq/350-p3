@@ -4,6 +4,8 @@
 #include "EntityManager.h"
 #include "LocationComponent.h"
 #include "WindowManager.h"
+#include <random>
+#include <cmath>
 
 namespace ECSEngine {
 
@@ -19,6 +21,12 @@ const float kCameraTween = 0.05f;
 //   - player in the outer 10%           -> camera follows directly, so they never reach the edge
 
 // Shake is added on top and decays over its frame budget.
+
+inline std::mt19937& ShakeRng() {
+    static std::mt19937 gen{std::random_device{}()};
+    return gen;
+}
+
 template <typename... Components>
 class CameraSystem : public System<Components...> {
 public:
@@ -71,7 +79,12 @@ public:
                 auto& shake = entities.template GetComponent<CameraShake>(target);
                 if (shake.frameLimit > 0) {
                     --shake.frameLimit;
-                    shaken += shake.offset;
+                    float theta = ShakeRng()();
+                    float cosTheta = std::cos(theta);
+                    float sinTheta = std::sin(theta);
+                    float xShape = shake.offset.x * cosTheta - shake.offset.y * sinTheta;
+                    float yShape = shake.offset.x * sinTheta + shake.offset.y * cosTheta;
+                    shaken += {xShape, yShape};
                 }
             }
 

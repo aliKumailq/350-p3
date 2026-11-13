@@ -20,7 +20,7 @@ namespace ECSEngine {
 
 // How hard a hit shakes, per unit of speed into the wall. Small enough that a walk into a wall is a
 // nudge and a full-speed dash is a shove.
-const float kShakePerSpeed = 1.50f;
+const float kShakePerSpeed = 0.3f;
 const int kShakeFrames = 8;
 
 // How much speed a loose object keeps after hitting a wall. Losing some on every bounce is what the
