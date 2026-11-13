@@ -78,6 +78,8 @@ private:
             auto& mover = entities.template GetComponent<CollisionComponent>(moverID);
             if (mover.staticEntity) continue;
 
+            const bool wasFalling = !mover.onGround; 
+
             mover.onGround = false;
             mover.onCeiling = false;
             mover.onLeftWall = false;
@@ -126,7 +128,6 @@ private:
                     // A downward move into a floor that was not on the ground last frame is a
                     // landing, and that is the one that makes a sound. Checking the previous flag
                     // is what keeps it to one blip per landing instead of every frame of contact.
-                    const bool wasFalling = !mover.onGround;
 
                     moverLoc.loc.y += depth.y;
                     if (depth.y > 0) mover.onCeiling = true;

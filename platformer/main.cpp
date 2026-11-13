@@ -149,12 +149,19 @@ void LoadMap(Engine& engine, const std::string& path, const std::string& file) {
             // component instead and is otherwise invisible.
             if (symbol == 'S') {
                 ECSEngine::SpawnComponent spawner{};
+                ECSEngine::SpriteComponent spawnerSprite{sprite};
                 spawner.entityID = id;
                 spawner.spawnTextureID = c['S'].id;
                 spawner.spawnType = "star";
                 spawner.timeToNextSpawn = kSpawnInterval;
                 spawner.timeBetweenSpawns = kSpawnInterval;
                 spawner.totalSpawns = -1;  // keep going
+
+                spawnerSprite.bounds = sprite.bounds;
+                spawnerSprite.textureID = spawner.spawnTextureID;
+                spawnerSprite.worldSpace = true;
+
+                entityManager.template addComponent<ECSEngine::SpriteComponent>(id, spawnerSprite);
                 entityManager.template addComponent<ECSEngine::SpawnComponent>(id, spawner);
                 entityManager.template addComponent<ECSEngine::LocationComponent>(id, loc);
                 continue;

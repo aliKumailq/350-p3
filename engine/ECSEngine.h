@@ -83,7 +83,6 @@ void ECSEngine<Components...>::Run() {
 
         mWindowManager.GetWindow()->clear();
         if (!mSystemManager.Run(this)) break;
-        mWindowManager.GetWindow()->display();
     }
 }
 
