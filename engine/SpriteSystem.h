@@ -13,6 +13,8 @@
 #include "SystemManager.h"
 #include "LocationComponent.h"
 #include "WindowManager.h"
+#include <SFML/Graphics/Color.hpp>
+#include <SFML/Graphics/RectangleShape.hpp>
 #include <SFML/Graphics/Sprite.hpp>
 #include <SFML/Graphics/Texture.hpp>
 #include <SFML/System/Vector2.hpp>
@@ -71,7 +73,15 @@ public:
         
         sprite.setPosition(finalPosition);
         sprite.setScale(finalScale);
+        auto rec = sprite.getGlobalBounds();
+        sf::RectangleShape r(rec.size);
+        r.setPosition(rec.position);
+        r.setFillColor(sf::Color::Transparent);
+        r.setOutlineColor(sf::Color::Red);
+        r.setOutlineThickness(5.0f);
+
         windowManager.GetWindow()->draw(sprite);
+        windowManager.GetWindow()->draw(r);
       }
 
       windowManager.GetWindow()->display();
