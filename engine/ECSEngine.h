@@ -17,6 +17,7 @@
 #include "WindowManager.h"
 #include <SFML/Graphics.hpp>
 #include <SFML/Window.hpp>
+#include <SFML/Window/Event.hpp>
 
 namespace ECSEngine {
 
@@ -60,6 +61,7 @@ private:
     // For debugging - pause and step the engine
     bool running, step;
     int debug;
+    bool mExit;
 };
 
 template <typename... Components>
@@ -72,16 +74,40 @@ ECSEngine<Components...>::~ECSEngine() {}
 
 template <typename... Components>
 void ECSEngine<Components...>::Run() {
-    while (mWindowManager.GetWindow()->isOpen()) {
-        mWindowManager.GetWindow()->pollEvent();
+    while (!mExit) {
+        ProcessEvents();
         mSystemManager.Run(this);
         
-    }
+    } return;
+
 }
 
 template <typename... Components>
 bool ECSEngine<Components...>::ProcessEvents() {
     auto window = mWindowManager.GetWindow();
+    while (const std::optional event = window->pollEvent()) {
+        if (event->is<sf::Event::Closed>()) {
+            mExit = true;
+            //
+        } else if (const auto* k = event->getIf<sf::Event::KeyPressed>()) {
+            for (auto& entity : mEntityManager) {
+                if (mEntityManager.template HasComponent<InputComponent>(entity.GetID())) {
+                    InputComponent& in = mEntityManager.template GetComponent<InputComponent>(entity.GetID());
+                    in.keydown[static_cast<int>(k->scancode)] = 1;
+                
+                }
+            }
+
+        } else if (const auto* k = event->getIf<sf::Event::KeyReleased>()) {
+            for (auto& entity : mEntityManager) {
+                if (mEntityManager.template HasComponent<InputComponent>(entity.GetID())) {
+                    InputComponent& in = mEntityManager.template GetComponent<InputComponent>(entity.GetID());
+                    in.keydown[static_cast<int>(k->scancode)] = 0;
+                
+                }
+            }
+        }
+    }
 
     return true;
 }

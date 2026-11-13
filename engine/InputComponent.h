@@ -13,7 +13,7 @@ namespace ECSEngine {
 struct InputComponent {
     InputComponent(EntityID whichEntity) : entity(whichEntity), lastDash(0) {}
     EntityID entity;
-    int lastDash;
+    int lastDash; // im assuming how many miliseconds since last dash.
     std::bitset<sf::Keyboard::ScancodeCount> keydown;
     std::bitset<sf::Keyboard::ScancodeCount> lastKeydown;
 };

@@ -160,6 +160,8 @@ int main(int argc, char* argv[]) {
     // Engine test code
     Engine engine(1024, 768, "Test Engine");
 
+    auto& entityMang{engine.GetEntityManager()};
+
     // Load sounds
 
     // Load maps
@@ -168,9 +170,42 @@ int main(int argc, char* argv[]) {
 
     engine.GetWindowManager().GetWindow()->setFramerateLimit(30);
     engine.GetWindowManager().SetWorldScale(1);
-    engine.GetWindowManager().SetWorldCenter({1152, 350});
+    engine.GetWindowManager().SetWorldCenter({1122, 350});
 
     // Place player
+    /*
+    Player has the following: 
+        - Collision Component
+        - Input component
+        - Score componenent.
+        - Input component 
+        - sprite component.
+        - location component.
+        - Camera component (fuck...)
+    */
+
+    auto id{entityMang.CreateEntity("player")};
+    auto spriteID{engine.GetSpriteManager().RegisterTexture("assets/spritesheet-characters-default.png", 
+        {{0.0f, 0.0f}, 128.0f, 128.0f})
+    };
+
+
+
+    auto spriteComp = ECSEngine::SpriteComponent{spriteID, {{0.0f, 0.0f}, 128, 128}, true};
+    auto locatopnComp = ECSEngine::LocationComponent{{14 * 64.0f, 8 * 64.0f}};
+    auto inputComp = ECSEngine::InputComponent{id};
+    auto movementComp = ECSEngine::MovementComponent{{0.0f, 0.0f}};
+    auto gravityComp = ECSEngine::GravityComponent{{1.0f, 1.0f}, 0};
+    auto collisionComp = ECSEngine::CollisionComponent{false, true};
+    collisionComp.onGround = true;
+    collisionComp.collisionBox = {locatopnComp.loc, 128, 128};
+
+    entityMang.template addComponent<ECSEngine::SpriteComponent>(id, spriteComp);
+    entityMang.template addComponent<ECSEngine::LocationComponent>(id, locatopnComp);
+    entityMang.template addComponent<ECSEngine::InputComponent>(id, inputComp);
+    entityMang.template addComponent<ECSEngine::MovementComponent>(id, movementComp);
+    entityMang.template addComponent<ECSEngine::GravityComponent>(id, gravityComp);
+    entityMang.template addComponent<ECSEngine::CollisionComponent>(id, collisionComp);
 
     // Setup score component
 

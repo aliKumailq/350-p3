@@ -10,7 +10,8 @@ public:
         return name;
     }
 
-    tSystemReturn Run(EngineView<Components...>* engine) override { return kContinue; }
+    tSystemReturn Run(EngineView<Components...>* engine) override {
+         return kContinue; }
 };
 
 }  // namespace ECSEngine
