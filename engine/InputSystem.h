@@ -2,6 +2,7 @@
 
 #include <algorithm>
 
+#include "CollisionComponent.h"
 #include "Keyboard.h"
 #include "SoundManager.h"
 #include "SoundNames.h"
@@ -15,10 +16,18 @@ namespace ECSEngine {
 // they sit together in one block instead of being scattered through the system body.
 const float kMaxRunVelocity = 15;
 const float kDashVelocity = 50;
-const float kJumpVelocity = 25;
+const float kJumpVelocity = 15;
 const float kGroundRunAcceleration = 5;
 const float kAirRunAcceleration = 4;
 const float kDashInterval = 25;
+
+// A wall jump throws the player up and away from the wall at the same time. The sideways part is
+// what makes it possible to climb between two facing walls, which the first spike corridor needs.
+const float kWallJumpPushX = 12.0f;
+
+// Releasing jump while still rising cuts the rise to this fraction, so a tap is a hop and a hold is
+// a full jump. Not zero: a dead stop feels like the game ate the input.
+const float kJumpCutMultiplier = 0.35f;
 
 // One frame of the player's intent, read out of the input bitset. The system builds this so the
 // behaviour reads in words instead of bit indices.
@@ -30,6 +39,10 @@ struct InputState {
     bool jump = false;
     bool dash = false;
 };
+
+// Stand-in for an entity that has no collision component, so the rest of the system can read the
+// contact flags without a branch at every use.
+inline const CollisionComponent sNoCollision{};
 
 template <typename... Components>
 class InputSystem : public System<Components...> {
@@ -53,8 +66,10 @@ public:
 
             const InputState state = ReadInput(input);
 
-            const bool onGround = entities.template HasComponent<CollisionComponent>(id) &&
-                                  entities.template GetComponent<CollisionComponent>(id).onGround;
+            const auto& collision = entities.template HasComponent<CollisionComponent>(id)
+                                        ? entities.template GetComponent<CollisionComponent>(id)
+                                        : sNoCollision;
+            const bool onGround = collision.onGround;
             const float accel = onGround ? kGroundRunAcceleration : kAirRunAcceleration;
 
             // Arrow keys drive horizontal velocity whether or not we are airborne. Letting go
@@ -82,12 +97,34 @@ public:
                 ++input.lastDash;
             }
 
-            // Jump is edge triggered and only from the ground. Wall jumps are handled in gravity
-            // and collision, because they depend on the wall flags from the previous frame.
+            // Jump is edge triggered. Three cases, all reading last frame's contact flags because
+            // this frame's are not decided until the collision system runs:
+            //   on the ground              -> a normal jump
+            //   against a wall, airborne   -> a wall jump, up and away from that wall
+            //   in the air, nothing there  -> no jump at all
             const bool jumpPressed = state.jump && !input.lastKeydown.test(Key::Z);
             if (jumpPressed && onGround) {
                 movement.velocity.y = -kJumpVelocity;
                 Play(engine, SoundName::kJump);
+            } else if (jumpPressed && (collision.onLeftWall || collision.onRightWall)) {
+                // Push away from whichever side we are touching. If both flags are set we are in a
+                // narrow shaft, and the arrow key the player is holding picks the direction out.
+                float away = 0.0f;
+                if (collision.onLeftWall && collision.onRightWall) away = state.left ? 1.0f : -1.0f;
+                else if (collision.onLeftWall) away = 1.0f;
+                else away = -1.0f;
+
+                movement.velocity.y = -kJumpVelocity;
+                movement.velocity.x = away * kWallJumpPushX;
+                Play(engine, SoundName::kJump);
+            }
+
+            // Jump-cut: letting go of jump while still rising kills most of the rise. This is what
+            // turns one jump button into a range of jump heights -- a tap clears a tile, a hold
+            // clears four.
+            const bool jumpReleased = !state.jump && input.lastKeydown.test(Key::Z);
+            if (jumpReleased && movement.velocity.y < 0) {
+                movement.velocity.y *= kJumpCutMultiplier;
             }
 
             input.lastKeydown = input.keydown;
