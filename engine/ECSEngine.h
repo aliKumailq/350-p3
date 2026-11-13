@@ -100,14 +100,17 @@ bool ECSEngine<Components...>::ProcessEvents() {
         } else if (const auto* key = event->getIf<sf::Event::KeyPressed>()) {
             const size_t scan = static_cast<size_t>(key->scancode);
             for (const Entity& e : mEntityManager) {
-                if (mEntityManager.HasComponent<InputComponent>(e.GetID()))
-                    mEntityManager.GetComponent<InputComponent>(e.GetID()).keydown.set(scan);
+                // .template is required here: EntityManager<Components...> is a dependent type, so
+                // the compiler cannot know HasComponent names a template until it is instantiated.
+                // MSVC lets this slide, GCC does not.
+                if (mEntityManager.template HasComponent<InputComponent>(e.GetID()))
+                    mEntityManager.template GetComponent<InputComponent>(e.GetID()).keydown.set(scan);
             }
         } else if (const auto* released = event->getIf<sf::Event::KeyReleased>()) {
             const size_t scan = static_cast<size_t>(released->scancode);
             for (const Entity& e : mEntityManager) {
-                if (mEntityManager.HasComponent<InputComponent>(e.GetID()))
-                    mEntityManager.GetComponent<InputComponent>(e.GetID()).keydown.reset(scan);
+                if (mEntityManager.template HasComponent<InputComponent>(e.GetID()))
+                    mEntityManager.template GetComponent<InputComponent>(e.GetID()).keydown.reset(scan);
             }
         }
     }
