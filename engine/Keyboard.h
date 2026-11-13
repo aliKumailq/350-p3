@@ -1,3 +1,5 @@
+#pragma once
+
 namespace ECSEngine {
 using KEY = unsigned int;
 namespace Key {

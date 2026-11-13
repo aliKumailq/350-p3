@@ -13,9 +13,31 @@ Rect WindowManager::GetWindowBounds() const {
     return {{0.0f,0.0f}, windowSize.x, windowSize.y}; 
 }
 
-void WindowManager::DebugDrawRect(const Rect& r, int red, int green, int blue, int alpha) {}
+// Both of these take a rect in WORLD coordinates -- the point of a debug draw is to show where the
+// engine thinks something is, and colliders live in world space. The rect is converted to window
+// space and drawn immediately, so call them from a system after the sprite pass or they will be
+// covered by whatever draws next.
+void WindowManager::DebugDrawRect(const Rect& r, int red, int green, int blue, int alpha) {
+    const Rect onScreen = WorldToWindow(r);
 
-void WindowManager::DebugFrameRect(const Rect& r, int red, int green, int blue, int alpha) {}
+    sf::RectangleShape shape({onScreen.width, onScreen.height});
+    shape.setPosition({onScreen.topLeft.x, onScreen.topLeft.y});
+    shape.setFillColor(sf::Color(static_cast<uint8_t>(red), static_cast<uint8_t>(green),
+                                 static_cast<uint8_t>(blue), static_cast<uint8_t>(alpha)));
+    mWindow->draw(shape);
+}
+
+void WindowManager::DebugFrameRect(const Rect& r, int red, int green, int blue, int alpha) {
+    const Rect onScreen = WorldToWindow(r);
+
+    sf::RectangleShape shape({onScreen.width, onScreen.height});
+    shape.setPosition({onScreen.topLeft.x, onScreen.topLeft.y});
+    shape.setFillColor(sf::Color::Transparent);
+    shape.setOutlineColor(sf::Color(static_cast<uint8_t>(red), static_cast<uint8_t>(green),
+                                    static_cast<uint8_t>(blue), static_cast<uint8_t>(alpha)));
+    shape.setOutlineThickness(1.0f);
+    mWindow->draw(shape);
+}
 
 Rect WindowManager::WindowToWorld(const Rect& rect) const { 
     return {WindowToWorld(rect.topLeft), WindowToWorld(rect.width), WindowToWorld(rect.height)}; }

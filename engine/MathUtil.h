@@ -11,7 +11,7 @@ namespace ECSEngine {
 struct Point2D {
     float x, y;
     Point2D(float x = 0, float y = 0) : x(x), y(y) {}
-    Point2D(int x, int y) : x(x), y(y) {}
+    Point2D(int x, int y) : x(static_cast<float>(x)), y(static_cast<float>(y)) {}
 
     inline Point2D& operator+=(const Point2D& other) {
         x += other.x;
