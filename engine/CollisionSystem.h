@@ -6,10 +6,12 @@
 #include <vector>
 
 #include "CameraComponent.h"
+#include "CollisionComponent.h"
 #include "CollisionUtil.h"
 #include "EntityManager.h"
 #include "InputComponent.h"
 #include "LocationComponent.h"
+#include "MathUtil.h"
 #include "ScoreComponent.h"
 #include "SoundManager.h"
 #include "SoundNames.h"
@@ -18,7 +20,7 @@ namespace ECSEngine {
 
 // How hard a hit shakes, per unit of speed into the wall. Small enough that a walk into a wall is a
 // nudge and a full-speed dash is a shove.
-const float kShakePerSpeed = 0.35f;
+const float kShakePerSpeed = 0.3f;
 const int kShakeFrames = 8;
 
 // How much speed a loose object keeps after hitting a wall. Losing some on every bounce is what the
@@ -112,6 +114,8 @@ private:
                                              : sZeroVelocity;
                 if (!hasMovement) continue;
 
+                const auto old_vel = velocity; // velocity prior to detecting the collision
+
                 // Resolve along whichever axis is less buried. That is what makes a floor push you
                 // up rather than sideways when you land near a corner.
                 const Point2D depth = CollisionUtil::Penetration(moverBox, tileBox);
@@ -123,7 +127,7 @@ private:
                     // Reflect off the vertical face, keeping a fraction of the speed. Stopping dead
                     // would make a spawned star die on the first wall it met.
                     velocity.x = bounces ? -velocity.x * kStarBounceDamping : 0.0f;
-                    AddShake(entities, moverID);
+                    if (IsHeadOn(mover, old_vel)) AddShake(entities, moverID);
                 } else {
                     // A downward move into a floor that was not on the ground last frame is a
                     // landing, and that is the one that makes a sound. Checking the previous flag
@@ -134,7 +138,7 @@ private:
                     else mover.onGround = true;
 
                     velocity.y = bounces ? -velocity.y * kStarBounceDamping : 0.0f;
-                    AddShake(entities, moverID);
+                    if (IsHeadOn(mover, old_vel)) AddShake(entities, moverID);
 
                     if (wasFalling && mover.onGround) Play(engine, SoundName::kLand);
                 }
@@ -283,6 +287,14 @@ private:
         shake.frameLimit = kShakeFrames;
         shake.offset = {velocity.x > 0 ? -magnitude : magnitude,
                         velocity.y > 0 ? -magnitude : magnitude};
+    }
+
+    static inline bool IsHeadOn(const CollisionComponent& mover, const Point2D& old_vel) {
+        if (mover.onLeftWall && old_vel.x < 0) return true; // a collision is "head-on" if its velocity prior to detecting the collision goes in the direction 
+        if (mover.onRightWall && old_vel.x > 0) return true;// toward the ride of the otherbounding box it collided with.
+        if (mover.onCeiling && old_vel.y < 0) return true;
+        if (mover.onGround && old_vel.y > 0) return true;
+        return false;
     }
 };
 

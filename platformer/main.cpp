@@ -238,6 +238,7 @@ int main(int argc, char* argv[]) {
         ECSEngine::MovementComponent playerMove{{0.0f, 0.0f}};
         ECSEngine::SpriteComponent playerSpriteComp{
             playerSprite, {ECSEngine::Point2D{0.0f, 0.0f}, kPlayerSize, kPlayerSize}, true};
+
         ECSEngine::CollisionComponent playerCollision{};
         playerCollision.collisionBox = {{0.0f, 0.0f}, kPlayerSize, kPlayerSize};
         ECSEngine::GravityComponent playerGravity{{0.0f, 1.0f}};
