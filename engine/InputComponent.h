@@ -16,7 +16,7 @@ struct InputComponent {
     InputComponent(EntityID whichEntity = std::numeric_limits<EntityID>::max())
         : entity(whichEntity), lastDash(0) {}
     EntityID entity;
-    int lastDash;
+    int lastDash;  // frames since the last dash, counted up to kDashInterval
     std::bitset<sf::Keyboard::ScancodeCount> keydown;
     std::bitset<sf::Keyboard::ScancodeCount> lastKeydown;
 };

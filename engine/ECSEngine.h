@@ -18,6 +18,7 @@
 #include "WindowManager.h"
 #include <SFML/Graphics.hpp>
 #include <SFML/Window.hpp>
+#include <SFML/Window/Event.hpp>
 
 namespace ECSEngine {
 
@@ -61,6 +62,7 @@ private:
     // For debugging - pause and step the engine
     bool running, step;
     int debug;
+    bool mExit = false;  // set when the window closes; ProcessEvents reports it to Run
 };
 
 template <typename... Components>
@@ -73,8 +75,11 @@ ECSEngine<Components...>::~ECSEngine() {}
 
 template <typename... Components>
 void ECSEngine<Components...>::Run() {
-    while (mWindowManager.GetWindow()->isOpen()) {
-        if (!ProcessEvents()) break;
+    // mExit is set by ProcessEvents when the window closes. It carries the loop rather than
+    // IsOpen(), so a close still gets one clean frame of shutdown instead of tearing the window out
+    // from under the systems.
+    while (!mExit) {
+        ProcessEvents();
 
         mWindowManager.GetWindow()->clear();
         if (!mSystemManager.Run(this)) break;
@@ -84,18 +89,15 @@ void ECSEngine<Components...>::Run() {
 
 // Drain everything the OS queued since last frame. Key events are written straight into every
 // InputComponent's bitset, so the systems later in the frame only ever look at the bitset and never
-// at SFML. Returns false once the window is gone, which is the loop's exit condition.
+// at SFML.
 template <typename... Components>
 bool ECSEngine<Components...>::ProcessEvents() {
     auto window = mWindowManager.GetWindow();
 
     while (const std::optional event = window->pollEvent()) {
         if (event->is<sf::Event::Closed>()) {
-            window->close();
-            return false;
-        }
-
-        if (const auto* key = event->getIf<sf::Event::KeyPressed>()) {
+            mExit = true;
+        } else if (const auto* key = event->getIf<sf::Event::KeyPressed>()) {
             const size_t scan = static_cast<size_t>(key->scancode);
             for (const Entity& e : mEntityManager) {
                 if (mEntityManager.HasComponent<InputComponent>(e.GetID()))
@@ -110,7 +112,7 @@ bool ECSEngine<Components...>::ProcessEvents() {
         }
     }
 
-    return true;
+    return !mExit;
 }
 
 template <typename... Components>

@@ -13,11 +13,17 @@
 #include "SystemManager.h"
 #include "LocationComponent.h"
 #include "WindowManager.h"
+#include <SFML/Graphics/Color.hpp>
+#include <SFML/Graphics/RectangleShape.hpp>
 #include <SFML/Graphics/Sprite.hpp>
 #include <SFML/Graphics/Texture.hpp>
 #include <SFML/System/Vector2.hpp>
 
 namespace ECSEngine {
+
+// Draws a red box around every sprite. A debugging aid only -- scaffolding, so it is off in the
+// submitted build and flipped on from here when a sprite lands somewhere unexpected.
+constexpr bool kDebugSpriteBounds = false;
 
 template <typename... Components>
 class SpriteSystem : public System<Components...> {
@@ -67,7 +73,21 @@ public:
         
         sprite.setPosition(finalPosition);
         sprite.setScale(finalScale);
+
         windowManager.GetWindow()->draw(sprite);
+
+        // Debug aid: outline every sprite with the box the engine thinks it occupies. Off by
+        // default because it is scaffolding, not part of the game -- flip it on when a sprite is
+        // drawn somewhere you did not expect.
+        if constexpr (kDebugSpriteBounds) {
+          const sf::FloatRect rec = sprite.getGlobalBounds();
+          sf::RectangleShape outline(rec.size);
+          outline.setPosition(rec.position);
+          outline.setFillColor(sf::Color::Transparent);
+          outline.setOutlineColor(sf::Color::Red);
+          outline.setOutlineThickness(5.0f);
+          windowManager.GetWindow()->draw(outline);
+        }
       }
 
       windowManager.GetWindow()->display();

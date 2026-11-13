@@ -214,6 +214,10 @@ int main(int argc, char* argv[]) {
 
     // Place player. The character sheet's first 128x128 cell is the orange alien; the sprite is
     // scaled down to a 64-unit box so it fits the tile grid.
+    //
+    // The player is one entity carrying Location, Movement, Sprite, Collision, Gravity, Input,
+    // CameraShake and Respawn. There is no Player class -- the systems find it by asking which
+    // entities have the components they need.
     ECSEngine::EntityID player = 0;
     {
         auto& entityManager = engine.GetEntityManager();

@@ -1,5 +1,5 @@
 namespace ECSEngine {
-
+using KEY = unsigned int;
 namespace Key {
 const unsigned int A = 0;
 const unsigned int B = 1;
