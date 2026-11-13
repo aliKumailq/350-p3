@@ -234,7 +234,6 @@ private:
             if (starID == holder) continue;
             if (!entities.IsValid(starID)) continue;
             if (!entities.template HasComponent<CollisionComponent>(starID)) continue;
-            if (!entities.template HasComponent<ScoreComponent>(starID)) continue;
             if (!entities.template HasComponent<LocationComponent>(starID)) continue;
 
             const auto& starCol = entities.template GetComponent<CollisionComponent>(starID);
@@ -257,8 +256,7 @@ private:
                 if (!CollisionUtil::Overlaps(starBox, CollisionUtil::WorldBox(otherCol, otherLoc)))
                     continue;
 
-                entities.template GetComponent<ScoreComponent>(holder).score +=
-                    entities.template GetComponent<ScoreComponent>(starID).score;
+                entities.template GetComponent<ScoreComponent>(holder).score += kScorePoints;
                 Play(engine, SoundName::kStar);
                 collected.push_back(starID);
                 break;

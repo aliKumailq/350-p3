@@ -5,6 +5,9 @@
 #include "MathUtil.h"
 #include "SpriteManager.h"
 
+constexpr int kScorePoints = 1;
+
+
 namespace ECSEngine {
 
 // The sprite rectangle is relative to the entity location in the world

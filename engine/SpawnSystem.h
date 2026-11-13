@@ -16,7 +16,6 @@ namespace ECSEngine {
 // A spawned star: 32 units across, worth one point, thrown at a fixed speed in a random direction.
 const float kStarSize = 32.0f;
 const float kStarSpeed = 6.0f;
-const int kStarPoints = 1;
 
 // One shared generator. Seeded from random_device so runs differ, which is fine here: nothing about
 // the game's correctness depends on the star directions.
@@ -79,14 +78,11 @@ public:
                                        {{0.0f, 0.0f}, kStarSize, kStarSize}, true};
             CollisionComponent starCollision{};
             starCollision.collisionBox = {{0.0f, 0.0f}, kStarSize, kStarSize};
-            ScoreComponent starScore{};
-            starScore.score = kStarPoints;
 
             entities.template addComponent<LocationComponent>(star, starLoc);
             entities.template addComponent<MovementComponent>(star, starMove);
             entities.template addComponent<SpriteComponent>(star, starSprite);
             entities.template addComponent<CollisionComponent>(star, starCollision);
-            entities.template addComponent<ScoreComponent>(star, starScore);
         }
 
         return kContinue;
