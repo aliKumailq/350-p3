@@ -84,9 +84,14 @@ private:
             // bounces and does not make a footstep when it settles.
             const bool isPlayer = entities.template HasComponent<InputComponent>(moverID);
 
-            // Where we were before this frame's resolve. Landing is the edge from "not on the ground"
-            // to "on the ground", so it has to be read before the flags are cleared.
+            // Where we were before this frame's resolve. A "hit" is a transition from no contact to
+            // contact, so all four have to be read before the flags are cleared. Without the edges the
+            // shake re-fires every frame the player leans into a wall, because the input system
+            // re-applies the velocity each frame.
             const bool wasOnGround = mover.onGround;
+            const bool wasOnCeiling = mover.onCeiling;
+            const bool wasOnLeftWall = mover.onLeftWall;
+            const bool wasOnRightWall = mover.onRightWall;
 
             mover.onGround = false;
             mover.onCeiling = false;
@@ -126,20 +131,28 @@ private:
                 const Point2D depth = CollisionUtil::Penetration(moverBox, tileBox);
                 if (std::abs(depth.x) < std::abs(depth.y)) {
                     moverLoc.loc.x += depth.x;
-                    if (depth.x > 0) mover.onLeftWall = true;
-                    else mover.onRightWall = true;
+                    if (depth.x > 0) {
+                        mover.onLeftWall = true;
+                        if (!wasOnLeftWall && old_vel.x < 0) AddShake(entities, moverID, old_vel);
+                    } else {
+                        mover.onRightWall = true;
+                        if (!wasOnRightWall && old_vel.x > 0) AddShake(entities, moverID, old_vel);
+                    }
 
                     // Reflect off the vertical face, keeping a fraction of the speed. Stopping dead
                     // would make a spawned star die on the first wall it met.
                     velocity.x = bounces ? -velocity.x * kStarBounceDamping : 0.0f;
-                    if (IsHeadOn(mover, old_vel)) AddShake(entities, moverID, old_vel);
                 } else {
                     moverLoc.loc.y += depth.y;
-                    if (depth.y > 0) mover.onCeiling = true;
-                    else mover.onGround = true;
+                    if (depth.y > 0) {
+                        mover.onCeiling = true;
+                        if (!wasOnCeiling && old_vel.y < 0) AddShake(entities, moverID, old_vel);
+                    } else {
+                        mover.onGround = true;
+                        if (!wasOnGround && old_vel.y > 0) AddShake(entities, moverID, old_vel);
+                    }
 
                     velocity.y = bounces ? -velocity.y * kStarBounceDamping : 0.0f;
-                    if (IsHeadOn(mover, old_vel)) AddShake(entities, moverID, old_vel);
                 }
 
                 // A bouncer that has slowed to a crawl is parked on the wall it hit, so zero it
@@ -293,14 +306,6 @@ private:
         auto& shake = entities.template GetComponent<CameraShake>(mover);
         shake.frameLimit = kShakeFrames;
         shake.offset = {-hitVelocity.x * kShakePerSpeed, -hitVelocity.y * kShakePerSpeed};
-    }
-
-    static inline bool IsHeadOn(const CollisionComponent& mover, const Point2D& old_vel) {
-        if (mover.onLeftWall && old_vel.x < 0) return true; // a collision is "head-on" if its velocity prior to detecting the collision goes in the direction 
-        if (mover.onRightWall && old_vel.x > 0) return true;// toward the ride of the otherbounding box it collided with.
-        if (mover.onCeiling && old_vel.y < 0) return true;
-        if (mover.onGround && old_vel.y > 0) return true;
-        return false;
     }
 };
 
