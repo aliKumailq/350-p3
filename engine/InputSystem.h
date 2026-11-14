@@ -19,7 +19,7 @@ const float kDashVelocity = 50;
 const float kJumpVelocity = 15;
 const float kGroundRunAcceleration = 5;
 const float kAirRunAcceleration = 4;
-const float kDashInterval = 25;
+const float kDashInterval = 30;  // frames; the game steps at 30 fps, so this is once a second
 
 // A wall jump throws the player up and away from the wall at the same time. The sideways part is
 // what makes it possible to climb between two facing walls, which the first spike corridor needs.
