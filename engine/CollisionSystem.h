@@ -31,9 +31,6 @@ const float kStarBounceDamping = 0.72f;
 // Below this speed a bouncing object stops instead of jittering against the wall forever.
 const float kStarRestSpeed = 0.35f;
 
-// Stand-in so the resolve can name a velocity even for an entity that has no movement component.
-inline Point2D sZeroVelocity{};
-
 // Runs after movement, so every box is already at its new position. Two passes:
 
 //   1. resolve  -- every dynamic collider against every static collider; the moving one is pushed
@@ -101,6 +98,13 @@ private:
 
             auto& moverLoc = entities.template GetComponent<LocationComponent>(moverID);
 
+            // A mover with no velocity cannot be resolved meaningfully; the bounce and shake below
+            // both need one. MovementSystem moved every mover by exactly its velocity this frame,
+            // so subtracting it recovers the box the tile loop started from.
+            if (!entities.template HasComponent<MovementComponent>(moverID)) continue;
+            auto& velocity = entities.template GetComponent<MovementComponent>(moverID).velocity;
+            const Point2D startTopLeft = mover.collisionBox.topLeft + (moverLoc.loc - velocity);
+
             for (const Entity& tileEntity : entities) {
                 const EntityID tileID = tileEntity.GetID();
                 if (tileID == moverID) continue;
@@ -134,25 +138,47 @@ private:
                 // Who bounces and who stops? The player stops against a wall; a loose object (star)
                 // ricochets and loses speed rather than sticking to it.
                 const bool bounces = !isPlayer;
-                const bool hasMovement = entities.template HasComponent<MovementComponent>(moverID);
-                auto& velocity = hasMovement ? entities.template GetComponent<MovementComponent>(moverID).velocity
-                                             : sZeroVelocity;
-                if (!hasMovement) continue;
 
                 const auto old_vel = velocity; // velocity prior to detecting the collision
 
-                // Resolve along whichever axis is less buried. The contact split above decides the
-                // axis when one overlap is zero; a real corner (both positive) still uses the
-                // shallower penetration, which is what makes a floor push you up rather than
-                // sideways when you land near a corner.
                 const Point2D depth = CollisionUtil::Penetration(moverBox, tileBox);
+
+                // A zero overlap on one axis is a flush touch, so resolve on that axis. A shared
+                // edge must not count as a face crossing, or sliding up a stacked-tile wall would
+                // read every seam above the mover as a ceiling.
                 bool horizontal;
-                if (overlapY > 0.0f && overlapX <= 0.0f) horizontal = true;        // flush against a face
-                else if (overlapX > 0.0f && overlapY <= 0.0f) horizontal = false;  // standing on / under it
-                else horizontal = std::abs(depth.x) < std::abs(depth.y);
+                if (overlapY > 0.0f && overlapX <= 0.0f) {
+                    horizontal = true;   // flush against a side face
+                } else if (overlapX > 0.0f && overlapY <= 0.0f) {
+                    horizontal = false;  // standing on / under it
+                } else {
+                    // Buried on both axes because the mover is pressed into a wall while moving
+                    // vertically: it clips the next tile up by only a few units while the wall face
+                    // is deeper. Which axis to push on cannot be read off the depths -- the seam
+                    // overlap is sometimes the smaller one and sometimes the larger -- so use where
+                    // the mover started. A box that began entirely to one side came in through that
+                    // side (a shared side edge counts, since a flush mover is already touching), and
+                    // a side scrape wins: resolving sideways keeps the rise and leaves the wall.
+                    // Otherwise a strict top/bottom crossing is a landing or a ceiling bump.
+                    const float startRight = startTopLeft.x + moverBox.width;
+                    const float startBottom = startTopLeft.y + moverBox.height;
+                    const bool cameFromSide = startRight <= tileBox.topLeft.x ||
+                                              startTopLeft.x >= tileBox.topLeft.x + tileBox.width;
+                    const bool cameFromEnd = startBottom < tileBox.topLeft.y ||
+                                             startTopLeft.y > tileBox.topLeft.y + tileBox.height;
+                    if (cameFromSide) horizontal = true;
+                    else if (cameFromEnd) horizontal = false;
+                    else horizontal = std::abs(depth.x) < std::abs(depth.y);  // already inside
+                }
                 if (horizontal) {
                     moverLoc.loc.x += depth.x;
-                    if (depth.x > 0) {
+                    // Which side the tile is on decides the flag. The sign of depth.x is useless for
+                    // a flush contact (it is zero), so read the geometry: a tile entirely to one side
+                    // is a wall on that side. A real overlap (tile straddling us) falls back to depth.
+                    const bool tileOnLeft = tileBox.topLeft.x + tileBox.width <= moverBox.topLeft.x;
+                    const bool tileOnRight = tileBox.topLeft.x >= moverBox.topLeft.x + moverBox.width;
+                    const bool wallOnLeft = tileOnLeft ? true : tileOnRight ? false : (depth.x > 0.0f);
+                    if (wallOnLeft) {
                         mover.onLeftWall = true;
                         if (!wasOnLeftWall && old_vel.x < 0) AddShake(entities, moverID, old_vel);
                     } else {
@@ -165,12 +191,15 @@ private:
                     velocity.x = bounces ? -velocity.x * kStarBounceDamping : 0.0f;
                 } else {
                     moverLoc.loc.y += depth.y;
-                    if (depth.y > 0) {
-                        mover.onCeiling = true;
-                        if (!wasOnCeiling && old_vel.y < 0) AddShake(entities, moverID, old_vel);
-                    } else {
+                    const bool tileAbove = tileBox.topLeft.y + tileBox.height <= moverBox.topLeft.y;
+                    const bool tileBelow = tileBox.topLeft.y >= moverBox.topLeft.y + moverBox.height;
+                    const bool groundBelow = tileBelow ? true : tileAbove ? false : (depth.y <= 0.0f);
+                    if (groundBelow) {
                         mover.onGround = true;
                         if (!wasOnGround && old_vel.y > 0) AddShake(entities, moverID, old_vel);
+                    } else {
+                        mover.onCeiling = true;
+                        if (!wasOnCeiling && old_vel.y < 0) AddShake(entities, moverID, old_vel);
                     }
 
                     velocity.y = bounces ? -velocity.y * kStarBounceDamping : 0.0f;
