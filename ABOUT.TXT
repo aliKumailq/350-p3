@@ -63,6 +63,16 @@ SystemManager
   - Owns the systems as unique_ptrs, runs them in insertion order every frame, and stops the
     loop if one returns kExit.
 
+External APIs
+-------------
+The engine wraps SFML and exposes only what the game needs.
+  - sf::RenderWindow (owned by WindowManager) is the window; sf::Sprite and sf::Texture are the
+    drawing primitives behind SpriteComponent and SpriteManager; sf::Sound and sf::SoundBuffer are
+    the voices behind SoundManager.
+  - The four managers are the spec's: WindowManager converts between world and screen space,
+    EntityManager hands out entities and their components, SoundManager stores and plays the
+    registered sounds, and SpriteManager stores and cuts the registered sprites.
+
 Components (12)
 ---------------
 LocationComponent   the entity's top-left in world space; every other stored offset is relative to it
