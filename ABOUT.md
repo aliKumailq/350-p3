@@ -29,4 +29,15 @@
 
 ## Ahmed
 
+
+## Additional API's
+### SFML
+- `sf::Sprite`, `sf::Texture`, `sf::RenderWindow`, and `sf::Sound` and `sf::Vec2<T>` used for actually rendering sprites to the screen, alongside soundeffects.
+
+### Window, Entity, Sound, and Sprite Managers
+- All of the managers required by the spec
+- Window: for interfacing between world space and screen space
+- Entity: for aquiring game entities and their components
+- Sound/Sprite: for storing and retrieving the sounds needed for each entity with a SpriteComponent and/or SoundComponent.
+
 ## <AI Usage\>
