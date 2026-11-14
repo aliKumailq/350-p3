@@ -6,6 +6,7 @@
 
 #include "CollisionComponent.h"
 #include "EntityManager.h"
+#include "InputComponent.h"
 #include "LocationComponent.h"
 #include "ScoreComponent.h"
 #include "SpriteComponent.h"
@@ -85,7 +86,43 @@ public:
             entities.template addComponent<CollisionComponent>(star, starCollision);
         }
 
+        CullStars(engine, entities);
+
         return kContinue;
+    }
+
+private:
+    // A star lives until it is collected or leaves the field. Without this, a star that bounces out
+    // past the map edges is never removed, so the entity list and the O(n^2) star-vs-star pass grow
+    // for the whole session. "Left the field" is measured from the camera: once a star is more than a
+    // full screen away it cannot be seen, so dropping it costs nothing.
+    static void CullStars(EngineView<Components...>* engine,
+                          EntityManager<Components...>& entities) {
+        const auto& window = engine->GetWindowManager();
+        const Point2D centre = window.GetWorldCenter();
+        const float scale = window.GetWorldScale();
+        const Rect view = window.GetWindowBounds();
+        const float reachX = view.width * scale;
+        const float reachY = view.height * scale;
+
+        std::vector<EntityID> gone;
+        for (const Entity& entity : entities) {
+            const EntityID id = entity.GetID();
+            if (!entities.IsValid(id)) continue;
+            if (!entities.template HasComponent<CollisionComponent>(id)) continue;
+            if (entities.template HasComponent<InputComponent>(id)) continue;  // the player
+            if (!entities.template HasComponent<MovementComponent>(id)) continue;
+            if (entities.template GetComponent<CollisionComponent>(id).staticEntity) continue;
+            if (!entities.template HasComponent<LocationComponent>(id)) continue;
+
+            const Point2D loc = entities.template GetComponent<LocationComponent>(id).loc;
+            if (std::abs(loc.x - centre.x) > reachX || std::abs(loc.y - centre.y) > reachY)
+                gone.push_back(id);
+        }
+
+        // Removed after the scan, for the same reason spawning is: RemoveEntity can hand the slot
+        // straight back to the next caller.
+        for (EntityID id : gone) entities.RemoveEntity(id);
     }
 };
 

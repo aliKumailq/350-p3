@@ -159,7 +159,7 @@ void LoadMap(Engine& engine, const std::string& path, const std::string& file) {
                 spawner.entityID = id;
                 spawner.spawnTextureID = c['S'].id;
                 spawner.spawnType = "star";
-                spawner.timeToNextSpawn = kSpawnInterval;
+                spawner.timeToNextSpawn = 0;  // first star after a full interval, not immediately
                 spawner.timeBetweenSpawns = kSpawnInterval;
                 spawner.totalSpawns = -1;  // keep going
 
