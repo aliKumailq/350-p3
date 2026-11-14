@@ -1,4 +1,7 @@
 #include "WindowManager.h"
+
+#include <cstdint>
+
 #include "SfHelper.h"
 
 namespace ECSEngine {

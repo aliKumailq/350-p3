@@ -30,7 +30,9 @@
 #include "SpriteSystem.h"
 #include <SFML/Graphics/Texture.hpp>
 
-std::string gResourcePath = "../assets/";
+// Where the asset folder lives at run time. Overridable with -path so the exe can be pointed at a
+// copy of assets from anywhere; the default matches the copy CMake makes next to the build.
+std::string gResourcePath = "assets";
 
 // Frames between star spawns, and how many stars stay alive at once.
 static constexpr int kSpawnInterval = 30;
@@ -113,7 +115,10 @@ void LoadMap(Engine& engine, const std::string& path, const std::string& file) {
         try {
             pts[i] = std::stof(placeholder);
             ++i;
-        } catch(...) {} // this sucks but im too tired to care.
+        } catch (...) {
+            // The line is "map origin 0 0 tile 64 64 size 32 12": the words are not numbers, so they
+            // throw and are skipped. Only the six numeric fields are kept, in order.
+        }
     }
 
     assert(i == 6);
@@ -131,7 +136,8 @@ void LoadMap(Engine& engine, const std::string& path, const std::string& file) {
 
         for (size_t col = 0; col < static_cast<size_t>(pts[4]); ++col) {
             const char symbol = line[col];
-            if (!c.contains(symbol)) continue;  // blank or unused character, nothing to place
+            // A '.' or an undefined character is not in the dictionary, so nothing is placed there.
+            if (c.find(symbol) == c.end()) continue;
 
             // The grid cell's world position. Every entity gets its own location, which is what
             // the sprite and collision systems treat as the entity's origin.
@@ -153,7 +159,7 @@ void LoadMap(Engine& engine, const std::string& path, const std::string& file) {
                 spawner.entityID = id;
                 spawner.spawnTextureID = c['S'].id;
                 spawner.spawnType = "star";
-                spawner.timeToNextSpawn = kSpawnInterval;
+                spawner.timeToNextSpawn = 0;  // first star after a full interval, not immediately
                 spawner.timeBetweenSpawns = kSpawnInterval;
                 spawner.totalSpawns = -1;  // keep going
 
@@ -204,16 +210,16 @@ int main(int argc, char* argv[]) {
     // jump for the dash.
     {
         auto& sounds = engine.GetSoundManager();
-        sounds.RegisterSound("assets/sfx_jump.ogg", ECSEngine::SoundName::kJump);
-        sounds.RegisterSound("assets/footstep_grass_003.ogg", ECSEngine::SoundName::kLand);
-        sounds.RegisterSound("assets/sfx_gem.ogg", ECSEngine::SoundName::kStar);
-        sounds.RegisterSound("assets/error_008.ogg", ECSEngine::SoundName::kWallSlide);
-        sounds.RegisterSound("assets/sfx_jump-high.ogg", ECSEngine::SoundName::kDash);
+        sounds.RegisterSound(gResourcePath + "/sfx_jump.ogg", ECSEngine::SoundName::kJump);
+        sounds.RegisterSound(gResourcePath + "/footstep_grass_003.ogg", ECSEngine::SoundName::kLand);
+        sounds.RegisterSound(gResourcePath + "/sfx_gem.ogg", ECSEngine::SoundName::kStar);
+        sounds.RegisterSound(gResourcePath + "/error_008.ogg", ECSEngine::SoundName::kWallSlide);
+        sounds.RegisterSound(gResourcePath + "/sfx_jump-high.ogg", ECSEngine::SoundName::kDash);
     }
 
     // Load maps
-    LoadMap(engine, "assets", "sky.map");
-    LoadMap(engine, "assets", "world.map");
+    LoadMap(engine, gResourcePath, "sky.map");
+    LoadMap(engine, gResourcePath, "world.map");
 
     engine.GetWindowManager().GetWindow()->setFramerateLimit(30);
     engine.GetWindowManager().SetWorldScale(1);
@@ -229,7 +235,7 @@ int main(int argc, char* argv[]) {
     {
         auto& entityManager = engine.GetEntityManager();
         ECSEngine::SpriteID playerSprite = engine.GetSpriteManager().RegisterTexture(
-            "assets/spritesheet-characters-default.png",
+            gResourcePath + "/spritesheet-characters-default.png",
             ECSEngine::Rect{ECSEngine::Point2D{0.0f, 0.0f}, 128.0f, 128.0f});
 
         player = entityManager.CreateEntity("player");
@@ -268,7 +274,7 @@ int main(int argc, char* argv[]) {
             // The numerals are one column of the tiles sheet, counting down 9..0 from the top.
             const float cellY = 256.0f + static_cast<float>(9 - d) * 64.0f;
             scoreComponent.digitTextureID[d] = spriteManager.RegisterTexture(
-                "assets/spritesheet-tiles-default.png",
+                gResourcePath + "/spritesheet-tiles-default.png",
                 ECSEngine::Rect{ECSEngine::Point2D{832.0f, cellY}, 64.0f, 64.0f});
         }
 

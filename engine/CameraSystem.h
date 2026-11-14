@@ -4,8 +4,6 @@
 #include "EntityManager.h"
 #include "LocationComponent.h"
 #include "WindowManager.h"
-#include <random>
-#include <cmath>
 
 namespace ECSEngine {
 
@@ -21,11 +19,6 @@ const float kCameraTween = 0.05f;
 //   - player in the outer 10%           -> camera follows directly, so they never reach the edge
 
 // Shake is added on top and decays over its frame budget.
-
-inline std::mt19937& ShakeRng() {
-    static std::mt19937 gen{std::random_device{}()};
-    return gen;
-}
 
 template <typename... Components>
 class CameraSystem : public System<Components...> {
@@ -50,7 +43,9 @@ public:
 
             if (entities.IsValid(target) && entities.template HasComponent<LocationComponent>(target)) {
                 const float playerX = entities.template GetComponent<LocationComponent>(target).loc.x;
-                const float width = window.GetWindowBounds().width;
+                // The bounds are pixels; the camera works in world units. Convert before mixing them,
+                // so a world scale other than 1 does not silently break the zones.
+                const float width = window.GetWindowBounds().width * window.GetWorldScale();
                 const float centre = camera.position.x;
 
                 // Where the player sits across the window as a fraction, 0 = left edge.
@@ -79,12 +74,7 @@ public:
                 auto& shake = entities.template GetComponent<CameraShake>(target);
                 if (shake.frameLimit > 0) {
                     --shake.frameLimit;
-                    float theta = ShakeRng()();
-                    float cosTheta = std::cos(theta);
-                    float sinTheta = std::sin(theta);
-                    float xShape = shake.offset.x * cosTheta - shake.offset.y * sinTheta;
-                    float yShape = shake.offset.x * sinTheta + shake.offset.y * cosTheta;
-                    shaken += {xShape, yShape};
+                    shaken += shake.offset;
                 }
             }
 

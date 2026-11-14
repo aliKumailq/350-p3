@@ -19,7 +19,7 @@ const float kDashVelocity = 50;
 const float kJumpVelocity = 15;
 const float kGroundRunAcceleration = 5;
 const float kAirRunAcceleration = 4;
-const float kDashInterval = 25;
+const float kDashInterval = 30;  // frames; the game steps at 30 fps, so this is once a second
 
 // A wall jump throws the player up and away from the wall at the same time. The sideways part is
 // what makes it possible to climb between two facing walls, which the first spike corridor needs.
@@ -72,6 +72,9 @@ public:
             const bool onGround = collision.onGround;
             const float accel = onGround ? kGroundRunAcceleration : kAirRunAcceleration;
 
+            // Touching the ground clears the no-repeat wall-jump rule, so the next wall is fair game.
+            if (onGround) input.lastWallSide = 0;
+
             // Arrow keys drive horizontal velocity whether or not we are airborne. Letting go
             // bleeds the speed off instead of stopping dead, which is what makes the movement feel
             // like a ramp rather than a toggle.
@@ -105,18 +108,34 @@ public:
             const bool jumpPressed = state.jump && !input.lastKeydown.test(Key::Z);
             if (jumpPressed && onGround) {
                 movement.velocity.y = -kJumpVelocity;
+                input.lastWallSide = 0;
                 Play(engine, SoundName::kJump);
             } else if (jumpPressed && (collision.onLeftWall || collision.onRightWall)) {
-                // Push away from whichever side we are touching. If both flags are set we are in a
-                // narrow shaft, and the arrow key the player is holding picks the direction out.
+                // Push away from whichever side we are touching. If both flags are set the shaft is
+                // narrow enough that we touch both walls at once; the arrow key the player holds
+                // picks the direction out, and with neither held we push off the opposite wall from
+                // the last jump so mashing still alternates instead of climbing one side.
                 float away = 0.0f;
-                if (collision.onLeftWall && collision.onRightWall) away = state.left ? 1.0f : -1.0f;
-                else if (collision.onLeftWall) away = 1.0f;
-                else away = -1.0f;
+                if (collision.onLeftWall && collision.onRightWall) {
+                    if (state.right) away = 1.0f;
+                    else if (state.left) away = -1.0f;
+                    else away = input.lastWallSide == 0 ? -1.0f : -static_cast<float>(input.lastWallSide);
+                } else if (collision.onLeftWall) {
+                    away = 1.0f;
+                } else {
+                    away = -1.0f;
+                }
 
-                movement.velocity.y = -kJumpVelocity;
-                movement.velocity.x = away * kWallJumpPushX;
-                Play(engine, SoundName::kJump);
+                // The wall being pushed off: pushing right means the wall was on the left.
+                const int side = (away > 0.0f) ? -1 : 1;
+                // A wall jump has to alternate surfaces (or follow a landing). Otherwise one wall can
+                // be climbed by mashing jump, which makes the dash-only corridor passable by jumping.
+                if (input.lastWallSide != side) {
+                    movement.velocity.y = -kJumpVelocity;
+                    movement.velocity.x = away * kWallJumpPushX;
+                    input.lastWallSide = side;
+                    Play(engine, SoundName::kJump);
+                }
             }
 
             // Jump-cut: letting go of jump while still rising kills most of the rise. This is what

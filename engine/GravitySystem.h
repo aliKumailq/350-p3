@@ -100,10 +100,12 @@ public:
 				}
 			}
 
+			// A grounded entity does not accumulate fall speed. That is what keeps a resting collider
+			// exactly on the floor instead of sinking and being pushed back out every frame.
 			if (!hasCollision) movement.velocity.y += acceleration;
 			else {
 				const auto& col = entities.template GetComponent<CollisionComponent>(id);
-				if (!col.onGround) movement.velocity.y += acceleration;;
+				if (!col.onGround) movement.velocity.y += acceleration;
 			}
 		}
 
