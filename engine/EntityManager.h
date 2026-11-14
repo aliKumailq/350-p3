@@ -14,11 +14,19 @@
 
 namespace ECSEngine {
 
+// Owns the entities and every component type in the game. Each component type has its own dense
+// array with its own free list (ComponentStorage); each entity keeps one ticket per component type
+// in mEntityToComponent, so reading entity i's component is two lookups with no search. The entity
+// list can have gaps after removals, so every pass must check IsValid on the ids it holds.
 template <typename... Components>
 class EntityManager {
 public:
+    // Ticket value meaning "this entity has no component of this type".
     static constexpr size_t kNullComponent = std::numeric_limits<size_t>::max();
 
+    // Creates an entity with this display name and returns its id. The id is an index into the
+    // entity vector and is reused after RemoveEntity, so an id that was kept must be re-checked with
+    // IsValid before it is trusted.
     [[nodiscard]] EntityID CreateEntity(const std::string& name) {
         
         const auto& entity_idx = mEntitiesIdx.store({});
@@ -48,8 +56,11 @@ public:
     // ask this per slot, because removals leave dead gaps behind.
     bool IsValid(EntityID entity) const { return mEntitiesIdx.valid(entity); }
 
+    // Gives this entity a copy of component. The component is stored in its type's dense array, so
+    // adding one can reallocate that array: do not hold a reference from GetComponent across this
+    // call, fetch it again afterwards.
     template <typename ComponentType>
-    void addComponent(EntityID id, ComponentType& component) {
+    void AddComponent(EntityID id, ComponentType& component) {
         assert(mEntitiesIdx.valid(id));
         static_assert(contains<ComponentType>);
         constexpr auto index = idx<ComponentType>;
@@ -59,6 +70,7 @@ public:
         return;
     }
 
+    // Removes one component type from an entity that has it. The entity itself stays alive.
     template <typename T>
     void RemoveComponent(EntityID entity) {
         assert(mEntitiesIdx.valid(entity)); // assert valid entity
@@ -72,11 +84,15 @@ public:
 
     }
 
+    // True when this live entity owns a component of type T.
     template <typename T>
     bool HasComponent(EntityID entity) const {
         return mEntityToComponent[idx<T>][entity] != kNullComponent;
     }
 
+    // The entity's component of type T. The reference points into that type's dense array; it stays
+    // valid until the next AddComponent/RemoveComponent/RemoveEntity on any entity, because those
+    // can move the array. Re-fetch it after any structural change.
     template <typename T>
     T& GetComponent(EntityID entity) {
         assert(HasComponent<T>(entity));
@@ -94,14 +110,13 @@ public:
 
     using tEntity = std::vector<Entity>;
 
-
-    public:
-
-	using const_iterator = tEntity::const_iterator;
-	const_iterator cbegin() const { return mEntitiesIdx.cbegin(); }
-	const_iterator cend() const { return mEntitiesIdx.cend(); }
-	const_iterator begin() { return mEntitiesIdx.begin(); }
-	const_iterator end() { return mEntitiesIdx.end(); }
+    // Iterates every slot, live or not. Systems check IsValid on each id before touching it, and
+    // must not add or remove entities while an iterator is being held.
+    using const_iterator = tEntity::const_iterator;
+    const_iterator cbegin() const { return mEntitiesIdx.cbegin(); }
+    const_iterator cend() const { return mEntitiesIdx.cend(); }
+    const_iterator begin() { return mEntitiesIdx.begin(); }
+    const_iterator end() { return mEntitiesIdx.end(); }
 
     private:
     std::tuple<ComponentStorage<Components>...> mRegistries;

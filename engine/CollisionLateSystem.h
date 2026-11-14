@@ -6,9 +6,9 @@
 
 namespace ECSEngine {
 
-// Runs before anything moves. Its only job is to remember where every collider was at the end of
-// last frame, so the collision system can sweep between the old box and the new one instead of only
-// testing the new one. Without this a fast-moving object can pass clean through a wall.
+// Runs before anything moves. It records each collider's world box as it stands at the start of
+// this frame, which is where it ended last frame. CollisionSystem resolves against the new box; this
+// copy is the previous one, kept so anything that needs the box a collider came from has it.
 template <typename... Components>
 class CollisionLateSystem : public System<Components...> {
 public:

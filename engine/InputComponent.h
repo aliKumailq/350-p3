@@ -11,6 +11,9 @@
 
 namespace ECSEngine {
 
+// The player's input state. The two bitsets are written by the engine's event pump and read by
+// InputSystem; the other fields are memory the input system needs from one frame to the next (dash
+// cooldown, last wall jumped, dash burst).
 struct InputComponent {
     // Defaulted so the sparse set can clear a removed slot with InputComponent{}.
     InputComponent(EntityID whichEntity = std::numeric_limits<EntityID>::max())

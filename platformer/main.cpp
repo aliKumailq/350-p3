@@ -167,21 +167,21 @@ void LoadMap(Engine& engine, const std::string& path, const std::string& file) {
                 spawnerSprite.textureID = spawner.spawnTextureID;
                 spawnerSprite.worldSpace = true;
 
-                entityManager.template addComponent<ECSEngine::SpriteComponent>(id, spawnerSprite);
-                entityManager.template addComponent<ECSEngine::SpawnComponent>(id, spawner);
-                entityManager.template addComponent<ECSEngine::LocationComponent>(id, loc);
+                entityManager.template AddComponent<ECSEngine::SpriteComponent>(id, spawnerSprite);
+                entityManager.template AddComponent<ECSEngine::SpawnComponent>(id, spawner);
+                entityManager.template AddComponent<ECSEngine::LocationComponent>(id, loc);
                 continue;
             }
 
-            entityManager.template addComponent<ECSEngine::SpriteComponent>(id, sprite);
-            entityManager.template addComponent<ECSEngine::LocationComponent>(id, loc);
+            entityManager.template AddComponent<ECSEngine::SpriteComponent>(id, sprite);
+            entityManager.template AddComponent<ECSEngine::LocationComponent>(id, loc);
 
             if (hasBounds) {
                 const auto& info = c[symbol].bounds;
                 ECSEngine::CollisionComponent collision{};
                 collision.staticEntity = true;
                 collision.collisionBox = {info->offset, info->width, info->height};
-                entityManager.template addComponent<ECSEngine::CollisionComponent>(id, collision);
+                entityManager.template AddComponent<ECSEngine::CollisionComponent>(id, collision);
             }
         }
     }
@@ -252,14 +252,14 @@ int main(int argc, char* argv[]) {
         ECSEngine::CameraShake playerShake{};
         ECSEngine::RespawnComponent playerSpawn{{kPlayerStartX, kPlayerStartY}};
 
-        entityManager.addComponent<ECSEngine::LocationComponent>(player, playerLoc);
-        entityManager.addComponent<ECSEngine::MovementComponent>(player, playerMove);
-        entityManager.addComponent<ECSEngine::SpriteComponent>(player, playerSpriteComp);
-        entityManager.addComponent<ECSEngine::CollisionComponent>(player, playerCollision);
-        entityManager.addComponent<ECSEngine::GravityComponent>(player, playerGravity);
-        entityManager.addComponent<ECSEngine::InputComponent>(player, playerInput);
-        entityManager.addComponent<ECSEngine::CameraShake>(player, playerShake);
-        entityManager.addComponent<ECSEngine::RespawnComponent>(player, playerSpawn);
+        entityManager.AddComponent<ECSEngine::LocationComponent>(player, playerLoc);
+        entityManager.AddComponent<ECSEngine::MovementComponent>(player, playerMove);
+        entityManager.AddComponent<ECSEngine::SpriteComponent>(player, playerSpriteComp);
+        entityManager.AddComponent<ECSEngine::CollisionComponent>(player, playerCollision);
+        entityManager.AddComponent<ECSEngine::GravityComponent>(player, playerGravity);
+        entityManager.AddComponent<ECSEngine::InputComponent>(player, playerInput);
+        entityManager.AddComponent<ECSEngine::CameraShake>(player, playerShake);
+        entityManager.AddComponent<ECSEngine::RespawnComponent>(player, playerSpawn);
     }
 
     // Setup score component. The HUD digit sprites come from the tiles sheet, which is where the
@@ -280,7 +280,7 @@ int main(int argc, char* argv[]) {
 
         const ECSEngine::EntityID hud = entityManager.CreateEntity("hud");
         ECSEngine::LocationComponent hudLoc{{8.0f, 8.0f}};
-        entityManager.addComponent<ECSEngine::LocationComponent>(hud, hudLoc);
+        entityManager.AddComponent<ECSEngine::LocationComponent>(hud, hudLoc);
 
         // Three digit entities, written by ScoreSystem. They live in screen space, so the camera
         // transform never touches them.
@@ -291,12 +291,12 @@ int main(int argc, char* argv[]) {
                 {{hudLoc.loc.x + static_cast<float>(slot) * 30.0f, hudLoc.loc.y}, 32.0f, 32.0f},
                 false};
             ECSEngine::LocationComponent digitLoc{{0.0f, 0.0f}};
-            entityManager.addComponent<ECSEngine::SpriteComponent>(digit, digitSprite);
-            entityManager.addComponent<ECSEngine::LocationComponent>(digit, digitLoc);
+            entityManager.AddComponent<ECSEngine::SpriteComponent>(digit, digitSprite);
+            entityManager.AddComponent<ECSEngine::LocationComponent>(digit, digitLoc);
             scoreComponent.digitID[slot] = digit;
         }
 
-        entityManager.addComponent<ECSEngine::ScoreComponent>(hud, scoreComponent);
+        entityManager.AddComponent<ECSEngine::ScoreComponent>(hud, scoreComponent);
     }
 
     // Setup Camera. One camera entity, pinned to the player, with a fixed y from the map.
@@ -312,8 +312,8 @@ int main(int argc, char* argv[]) {
         ECSEngine::CameraFollower follower{};
         follower.entityID = player;
 
-        entityManager.addComponent<ECSEngine::CameraComponent>(camera, cameraComponent);
-        entityManager.addComponent<ECSEngine::CameraFollower>(camera, follower);
+        entityManager.AddComponent<ECSEngine::CameraComponent>(camera, cameraComponent);
+        entityManager.AddComponent<ECSEngine::CameraFollower>(camera, follower);
     }
 
     // Add all systems

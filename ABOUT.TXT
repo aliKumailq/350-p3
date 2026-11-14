@@ -139,7 +139,7 @@ The constants are at the top of InputSystem.h and GravitySystem.h.
 
 Resource lifetimes
 ------------------
-This is the part the rubric asks to be written down.
+What a getter returns, and how long it stays valid.
 
   - GetSound returns a reference owned by SoundManager. It stays valid until the manager is
     destroyed, and registering more sounds does not move it. There is one voice per name, so two
@@ -177,9 +177,6 @@ Ahmed Sajid
   - Event processing and the input system, the collision system and its utilities, the gravity and
     movement systems, the score system and the star spawner, the sound manager and sound names, the
     wall jump and jump tuning, the star bounce, and the player, camera and HUD setup in main.
-  - The review and fix pass: GCC 9.4 portability, the land sound and screen shake, the wall-seam
-    float, star despawn, the wall-jump alternation rule, the dash cooldown, the shorter air travel
-    and the dash burst, and these notes.
 
 Use of AI
 ---------

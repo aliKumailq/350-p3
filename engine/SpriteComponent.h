@@ -10,14 +10,14 @@
 
 namespace ECSEngine {
 
-// The sprite rectangle is relative to the entity location in the world
-// This is only defined if an entity also has a LocationComponent.
+// How an entity is drawn. The draw rect is relative to the entity's LocationComponent, which the
+// sprite system adds in before drawing. The entity needs a LocationComponent as well; the sprite
+// system asserts that.
 class SpriteComponent {
 public:
-    SpriteID textureID;
-    Rect bounds;
-    bool worldSpace;  // If false, this sprite is drawn in screen space instead of world space
-private:
+    SpriteID textureID;  // sprite registered with SpriteManager
+    Rect bounds;         // draw rect relative to the entity location
+    bool worldSpace;     // true = moved by the camera; false = drawn in screen space
 };
 
 }  // namespace ECSEngine

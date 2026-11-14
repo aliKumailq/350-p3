@@ -22,6 +22,8 @@
 
 namespace ECSEngine {
 
+// What a system is allowed to touch. A system is handed one of these instead of the engine itself,
+// so it reaches the four resource managers only through this interface and never owns them.
 template <typename... Components>
 class EngineView {
 public:
@@ -31,12 +33,15 @@ public:
     virtual WindowManager& GetWindowManager() = 0;
 };
 
+// The engine. It owns the five managers (the four in EngineView plus the system manager) and runs
+// the frame loop: drain events, clear the window, then let the systems draw and update.
 template <typename... Components>
 class ECSEngine : public EngineView<Components...> {
 public:
     ECSEngine(unsigned int width, unsigned int height, const std::string& name);
     ~ECSEngine();
 
+    // Runs until the window is closed or a system returns kExit.
     void Run();
 
     SoundManager& GetSoundManager() override { return mSoundManager; }
@@ -47,11 +52,11 @@ public:
 
     WindowManager& GetWindowManager() override { return mWindowManager; }
 
+    // The system manager is not part of EngineView: systems are added by the game, not by a system.
     SystemManager<Components...>& GetSystemManager() { return mSystemManager; }
 
 private:
     bool ProcessEvents();
-    void DebugDraw();
 
     EntityManager<Components...> mEntityManager;
     SystemManager<Components...> mSystemManager;
@@ -59,9 +64,6 @@ private:
     SoundManager mSoundManager;
     WindowManager mWindowManager;
 
-    // For debugging - pause and step the engine
-    bool running, step;
-    int debug;
     bool mExit = false;  // set when the window closes; ProcessEvents reports it to Run
 };
 
@@ -116,8 +118,5 @@ bool ECSEngine<Components...>::ProcessEvents() {
 
     return !mExit;
 }
-
-template <typename... Components>
-void ECSEngine<Components...>::DebugDraw() {}
 
 }  // namespace ECSEngine

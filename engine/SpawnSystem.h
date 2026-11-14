@@ -80,10 +80,10 @@ public:
             CollisionComponent starCollision{};
             starCollision.collisionBox = {{0.0f, 0.0f}, kStarSize, kStarSize};
 
-            entities.template addComponent<LocationComponent>(star, starLoc);
-            entities.template addComponent<MovementComponent>(star, starMove);
-            entities.template addComponent<SpriteComponent>(star, starSprite);
-            entities.template addComponent<CollisionComponent>(star, starCollision);
+            entities.template AddComponent<LocationComponent>(star, starLoc);
+            entities.template AddComponent<MovementComponent>(star, starMove);
+            entities.template AddComponent<SpriteComponent>(star, starSprite);
+            entities.template AddComponent<CollisionComponent>(star, starCollision);
         }
 
         CullStars(engine, entities);

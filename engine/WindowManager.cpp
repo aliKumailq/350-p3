@@ -71,8 +71,10 @@ void WindowManager::SetWorldScale(float worldUnitsPerPixel) {
 }
 
 void WindowManager::SetWorldRect(const Rect& worldCameraRect) {
-    SetWorldCenter(worldCameraRect.center());
-    // FIXME: also needs to account for scaling i.e. rectangles that are different size of the window.
+    // Map the rect's width onto the window's width, then put its centre at the window centre.
+    const Vector2D size = windowSize();
+    if (size.x > 0.0f) mWorldUnitsPerPixel = worldCameraRect.width / size.x;
+    mViewCenterWorld = worldCameraRect.center();
 }
 
 float WindowManager::WindowToWorld(float x) const { return x * mWorldUnitsPerPixel; }
