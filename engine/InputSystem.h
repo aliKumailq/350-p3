@@ -15,11 +15,18 @@ namespace ECSEngine {
 // system only clamps the result. These are the tuning constants the assignment lets us choose, so
 // they sit together in one block instead of being scattered through the system body.
 const float kMaxRunVelocity = 15;
+// Slower than the run, and slower than the dash. Capping the air speed separately is what keeps a
+// wide gap out of jump range: the jump arc is unchanged but it does not carry as far.
+const float kMaxAirVelocity = 8;
 const float kDashVelocity = 50;
 const float kJumpVelocity = 15;
 const float kGroundRunAcceleration = 5;
 const float kAirRunAcceleration = 4;
 const float kDashInterval = 30;  // frames; the game steps at 30 fps, so this is once a second
+
+// How many frames one dash lasts. At the dash speed this carries about six tiles, which is enough
+// for the wide spike corridor but further than any jump reaches.
+const int kDashFrames = 8;
 
 // A wall jump throws the player up and away from the wall at the same time. The sideways part is
 // what makes it possible to climb between two facing walls, which the first spike corridor needs.
@@ -75,29 +82,45 @@ public:
             // Touching the ground clears the no-repeat wall-jump rule, so the next wall is fair game.
             if (onGround) input.lastWallSide = 0;
 
-            // Arrow keys drive horizontal velocity whether or not we are airborne. Letting go
-            // bleeds the speed off instead of stopping dead, which is what makes the movement feel
-            // like a ramp rather than a toggle.
             float& vx = movement.velocity.x;
-            if (state.left && !state.right) {
-                vx = std::max(vx - accel, -kMaxRunVelocity);
-            } else if (state.right && !state.left) {
-                vx = std::min(vx + accel, kMaxRunVelocity);
-            } else if (vx > 0) {
-                vx = std::max(vx - accel, 0.0f);
-            } else if (vx < 0) {
-                vx = std::min(vx + accel, 0.0f);
-            }
 
-            // Dash is edge triggered -- the key must go down this frame and not last frame -- and
-            // rate limited so it can only fire once per kDashInterval frames.
-            const bool dashPressed = state.dash && !input.lastKeydown.test(Key::C);
-            if (dashPressed && input.lastDash >= kDashInterval) {
-                vx = (vx < 0 ? -1.0f : 1.0f) * kDashVelocity;
-                input.lastDash = 0;
-                Play(engine, SoundName::kDash);
-            } else {
+            if (input.dashTimer > 0) {
+                // Mid-dash: hold the burst speed and ignore the arrow keys. Gravity is switched off
+                // for the same frames, so the dash is a straight lunge rather than an arc.
+                --input.dashTimer;
+                vx = input.dashDir * kDashVelocity;
                 ++input.lastDash;
+            } else {
+                // Arrow keys drive horizontal velocity whether or not we are airborne. Letting go
+                // bleeds the speed off instead of stopping dead, which is what makes the movement
+                // feel like a ramp rather than a toggle. Air speed is capped lower than ground
+                // speed, so a jump covers less ground than the run that launched it.
+                const float maxSpeed = onGround ? kMaxRunVelocity : kMaxAirVelocity;
+                if (state.left && !state.right) {
+                    vx = std::max(vx - accel, -maxSpeed);
+                } else if (state.right && !state.left) {
+                    vx = std::min(vx + accel, maxSpeed);
+                } else if (vx > 0) {
+                    vx = std::max(vx - accel, 0.0f);
+                } else if (vx < 0) {
+                    vx = std::min(vx + accel, 0.0f);
+                }
+
+                // Dash is edge triggered -- the key must go down this frame and not last frame --
+                // and rate limited so it can only fire once per kDashInterval frames.
+                const bool dashPressed = state.dash && !input.lastKeydown.test(Key::C);
+                if (dashPressed && input.lastDash >= kDashInterval) {
+                    input.dashDir = vx < 0.0f ? -1.0f : 1.0f;
+                    input.dashTimer = kDashFrames;
+                    vx = input.dashDir * kDashVelocity;
+                    movement.velocity.y = 0.0f;
+                    if (entities.template HasComponent<GravityComponent>(id))
+                        entities.template GetComponent<GravityComponent>(id).disabledTimer = kDashFrames;
+                    input.lastDash = 0;
+                    Play(engine, SoundName::kDash);
+                } else {
+                    ++input.lastDash;
+                }
             }
 
             // Jump is edge triggered. Three cases, all reading last frame's contact flags because

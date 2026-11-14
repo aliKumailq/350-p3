@@ -26,7 +26,7 @@ const float kFastFallMultiplier = 2.5f;
 // floaty if the arc is symmetric, and games feel responsive when the descent is quicker than the
 // ascent. ApexGravityMultiplier is applied between the two.
 const float kFallGravityMultiplier = 1.9f;
-const float kApexGravityMultiplier = 0.6f;
+const float kApexGravityMultiplier = 0.8f;
 
 // Applies acceleration to anything with both a gravity and a movement component. Gravity is not a
 // constant here: the collision flags from last frame change it, which is what gives the wall slide
