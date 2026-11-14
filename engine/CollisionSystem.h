@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <cmath>
 #include <limits>
 #include <utility>
@@ -116,6 +117,20 @@ private:
                 const Rect tileBox = CollisionUtil::WorldBox(tile, tileLoc);
                 if (!CollisionUtil::Overlaps(moverBox, tileBox)) continue;
 
+                // Overlaps() counts a shared edge as a collision -- that is what keeps a resting
+                // collider grounded. But a zero overlap on one axis is only a *touch*, not
+                // penetration: a tile flush against our side must not be resolved vertically, and
+                // one under our feet must not be resolved sideways. Without this split, pressing
+                // into a stacked-tile wall resolves along a tile seam, pushes the player up and
+                // flags it on-ground, so it floats there.
+                const float overlapX =
+                    std::min(moverBox.topLeft.x + moverBox.width, tileBox.topLeft.x + tileBox.width) -
+                    std::max(moverBox.topLeft.x, tileBox.topLeft.x);
+                const float overlapY =
+                    std::min(moverBox.topLeft.y + moverBox.height, tileBox.topLeft.y + tileBox.height) -
+                    std::max(moverBox.topLeft.y, tileBox.topLeft.y);
+                if (overlapX <= 0.0f && overlapY <= 0.0f) continue;  // corner touch, nothing to resolve
+
                 // Who bounces and who stops? The player stops against a wall; a loose object (star)
                 // ricochets and loses speed rather than sticking to it.
                 const bool bounces = !isPlayer;
@@ -126,10 +141,16 @@ private:
 
                 const auto old_vel = velocity; // velocity prior to detecting the collision
 
-                // Resolve along whichever axis is less buried. That is what makes a floor push you
-                // up rather than sideways when you land near a corner.
+                // Resolve along whichever axis is less buried. The contact split above decides the
+                // axis when one overlap is zero; a real corner (both positive) still uses the
+                // shallower penetration, which is what makes a floor push you up rather than
+                // sideways when you land near a corner.
                 const Point2D depth = CollisionUtil::Penetration(moverBox, tileBox);
-                if (std::abs(depth.x) < std::abs(depth.y)) {
+                bool horizontal;
+                if (overlapY > 0.0f && overlapX <= 0.0f) horizontal = true;        // flush against a face
+                else if (overlapX > 0.0f && overlapY <= 0.0f) horizontal = false;  // standing on / under it
+                else horizontal = std::abs(depth.x) < std::abs(depth.y);
+                if (horizontal) {
                     moverLoc.loc.x += depth.x;
                     if (depth.x > 0) {
                         mover.onLeftWall = true;
